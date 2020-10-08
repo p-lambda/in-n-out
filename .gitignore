@@ -127,3 +127,17 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# emacs temp files
+*~
+
+/models/
+/innout/wandb/
+logs/
+innout-pseudolabels/
+/scripts/landcover/wandb
+/scripts/landcover/logs
+/pseudolabels/
+*.swp
+docker/*
+wandb/*

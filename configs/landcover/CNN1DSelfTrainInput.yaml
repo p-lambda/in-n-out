@@ -1,0 +1,87 @@
+log_interval: 100
+use_cuda: True
+save_freq: 400
+epochs: &epochs 400
+batch_size: 128
+eval_batch_size: 128
+batch_gd: False
+num_classes: &num_classes 6
+
+optimizer:
+  classname: torch.optim.SGD
+  args:
+    lr: &lr 0.01
+    momentum: 0.9
+
+scheduler:
+  classname: innout.schedulers.CosineLR
+  args:
+    optimizer: null
+    lr: *lr
+    num_epochs: *epochs
+
+model:
+  classname: innout.models.cnn1d.CNN1DMultitask
+  args:
+    use_idx: 0
+    in_channels: 8
+    task_dims:
+      - [128, 1024, 6]
+      - [128, 1024, 12]
+
+dataset:
+  classname: innout.datasets.landcover.Landcover
+  args:
+    # root: .
+    # cache_path: landcover_data.pkl
+    root: /u/nlp/data/landcover/timeseries_by_box_v2
+    cache_path: /u/nlp/data/landcover/landcover_v2.pkl
+    include_NDVI: True
+    include_ERA5: False
+    standardize: True
+    shuffle_domains: True
+    seed: 1111
+    use_cache: True
+    unlabeled_prop: 0.9
+    use_unlabeled_id: True
+    use_unlabeled_ood: False
+    pretrain: False
+    multitask: False
+  train_args:
+    split: nonafrica-train
+  eval_train_args:
+    split: nonafrica-train
+  val_args:
+    split: nonafrica-val
+  test_args:
+    split: nonafrica-test
+  test2_args:
+    split: africa
+
+train_transforms:
+  - classname: innout.datasets.transforms.LambdaTransform
+    args:
+      function_path: innout.datasets.transforms.to_tensor
+  - classname: innout.datasets.transforms.LambdaTransform
+    args:
+      function_path: innout.datasets.transforms.tensor_to_float
+
+test_transforms:
+  - classname: innout.datasets.transforms.LambdaTransform
+    args:
+      function_path: innout.datasets.transforms.to_tensor
+  - classname: innout.datasets.transforms.LambdaTransform
+    args:
+      function_path: innout.datasets.transforms.tensor_to_float
+
+loss:
+    classname: innout.losses.WeightedSelfTrainLoss
+    args:
+      reduction: mean
+      eval: False
+
+eval_loss:
+    classname: torch.nn.CrossEntropyLoss
+    args:
+      reduction: sum
+      eval: True

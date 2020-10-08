@@ -1,0 +1,85 @@
+log_interval: 100
+use_cuda: True
+epochs: &epochs 50
+save_freq: *epochs
+batch_size: 512
+eval_batch_size: 512
+batch_gd: False
+
+optimizer:
+  classname: torch.optim.Adam
+  args:
+    lr: &lr 0.001
+    
+scheduler:
+  classname: torch.optim.lr_scheduler.StepLR
+  args:
+    step_size: 10
+    gamma: 0.5
+      
+model:
+  classname: innout.models.unet.UNet
+  args:
+    in_channels: 3
+    out_channels: 5
+    task: "binary"
+
+train_transforms:
+  - classname: innout.datasets.transforms.LambdaTransform
+    args:
+      function_path: numpy.nan_to_num
+  - classname: innout.datasets.transforms.LambdaTransform
+    args:
+      function_path: torch.from_numpy
+  - classname: torchvision.transforms.Normalize
+    args:
+      mean: 0.5
+      std: 0.5
+
+test_transforms:
+  - classname: innout.datasets.transforms.LambdaTransform
+    args:
+      function_path: numpy.nan_to_num
+  - classname: innout.datasets.transforms.LambdaTransform
+    args:
+      function_path: torch.from_numpy
+  - classname: torchvision.transforms.Normalize
+    args:
+      mean: 0.5
+      std: 0.5
+
+dataset:
+  classname: innout.datasets.cropland.Cropland
+  args:
+    shuffle: True
+    cache_path: cropland_data.pkl
+    use_template: True
+    use_unlabeled: False
+    in_bands: [1, 2, 3]
+    unlabeled_prop: 0.95
+    use_unlabeled_id: True
+    use_unlabeled_ood: False
+  train_args:
+    split: "nonindiana_kentucky-train"
+  val_args:
+    split: "nonindiana_kentucky-val"
+  test_args:
+    split: "nonindiana_kentucky-test"
+  test2_args:
+    split: "indiana_kentucky-test2"
+
+dataloader:
+  args:
+    num_workers: 4
+
+loss:
+    classname: innout.losses.WeightedSelfTrainLoss
+    args:
+      reduction: mean
+      eval: False
+      is_binary: True
+
+eval_loss:
+  classname: torch.nn.BCEWithLogitsLoss
+  args:
+    reduction: sum
