@@ -40,25 +40,6 @@ STATE_TO_INDEX = {state: index for index, state in enumerate(STATE_NAMES)}
 VALID_SPLITS = ('train', 'val', 'test', 'test2')
 
 
-def create_mmapped_file(patch_folder_path, mmap_path, overwrite=False):
-    mmap_path = Path(mmap_path)
-    if mmap_path.exists() and not overwrite:
-        error_str = f'{str(mmap_path)} already exists!'
-        error_str += ' Use overwrite=True if you want to overwrite.'
-        raise ValueError(error_str)
-    patch_folder_path = Path(patch_folder_path)
-    num_patches = sum(1 for _ in patch_folder_path.iterdir())
-    shape = (num_patches, *PATCH_SHAPE)
-    mmap_array = np.memmap(mmap_path, dtype='float64', mode='w+', shape=shape)
-    for idx, patch_path in enumerate(sorted(patch_folder_path.iterdir())):
-        if idx % 10000 == 0:
-            print(f'Processing patch {idx + 1}/{num_patches}')
-        patch_array = np.load(str(patch_path), mmap_mode='r')
-        mmap_array[idx] = patch_array
-        del patch_array
-    del mmap_array  # Flushes contents to file.
-
-
 def resave_dataset(full_dataset_path, new_dataset_path, bands, dtype):
     '''
     Resaves the Landsat dataset into a new location with the specified bands
@@ -266,44 +247,6 @@ def load_data(patch_dir_path=CONDENSED_PATCH_DIR_PATH,
     return data_map
 
 
-def split_by_lat(data_map, lat_split):
-    '''
-    Filters data based on a certain latitude threshold.
-
-    Parameters
-    ----------
-    data_map : dict
-        Stores Landsat measurements, lat/lons, targets, and patch numbers.
-    lat_split : Callable[[float], bool]
-        Returns whether a point should be kept based on its latitude.
-    '''
-    data_map = data_map.copy()  # Don't overwrite original data_map.
-    lat_mask = lat_split(data_map['lat_lons'][:, 0])
-    for key in data_map.keys():
-        if isinstance(data_map[key], np.ndarray) and data_map[key].size > 0:
-            data_map[key] = data_map[key][lat_mask]
-    return data_map
-
-
-def split_by_lon(data_map, lon_split):
-    '''
-    Filters data based on a certain longitude threshold.
-
-    Parameters
-    ----------
-    data_map : Dict[str, Union[numpy.ndarray, str]
-        Stores Landsat measurements, lat/lons, targets, and patch numbers.
-    lon_split : Callable[[float], bool]
-        Returns whether a point should be kept based on its longitude.
-    '''
-    data_map = data_map.copy()  # Don't overwrite original data_map.
-    lon_mask = lon_split(data_map['lat_lons'][:, 1])
-    for key in data_map.keys():
-        if isinstance(data_map[key], np.ndarray) and data_map[key].size > 0:
-            data_map[key] = data_map[key][lon_mask]
-    return data_map
-
-
 def state_split(data_map, state_name, shapefile_path=SHAPEFILE_PATH):
     '''
     Filters data to only include points in the specified state. Note that
@@ -375,37 +318,6 @@ def state_OOD_split(data_map, state_name, shapefile_path=SHAPEFILE_PATH):
     all_indices = np.arange(len(data_map['data']))
     indices_ID = np.setdiff1d(all_indices, indices_OOD, assume_unique=True)
     return indices_ID, indices_OOD
-
-
-def minnesota_split(data_map):
-    data_map = split_by_lat(data_map, lambda lat: lat >= 40.5)
-    data_map = split_by_lon(data_map, lambda lon: lon <= -91)
-    return data_map
-
-
-def illinois_split(data_map):
-    data_map = split_by_lat(data_map, lambda lat: lat >= 38)
-    data_map = split_by_lon(data_map, lambda lon: lon >= -90)
-    data_map = split_by_lon(data_map, lambda lon: lon <= -87.5)
-    return data_map
-
-
-def indiana_split(data_map):
-    data_map = split_by_lat(data_map, lambda lat: lat >= 37.5)
-    data_map = split_by_lon(data_map, lambda lon: lon > -87.5)
-    return data_map
-
-
-def iowa_split(data_map):
-    data_map = split_by_lat(data_map, lambda lat: lat < 40.5)
-    data_map = split_by_lon(data_map, lambda lon: lon <= -91.5)
-    return data_map
-
-
-def kentucky_split(data_map):
-    data_map = split_by_lat(data_map, lambda lat: lat < 37.5)
-    data_map = split_by_lon(data_map, lambda lon: lon >= -88)
-    return data_map
 
 
 def shuffle_data(data_map, seed):
@@ -636,16 +548,11 @@ class Cropland(Dataset):
             use_unlabeled_ood = True
         if use_unlabeled_id:
             unlabeled_id = split_idxs['unlabeled_id']
-            #rng = np.random.default_rng(seed + 1)
-            #unlabeled_id = rng.choice(unlabeled_id, id_size, replace=False)'''
         if use_unlabeled_ood:
             unlabeled_ood = split_idxs['unlabeled_ood']
-            #rng = np.random.default_rng(seed + 2)
-            #unlabeled_ood = rng.choice(unlabeled_ood, ood_size, replace=False)
 
         unlabeled_indices = np.hstack((unlabeled_id, unlabeled_ood))
         if shuffle:
-            #rng = np.random.default_rng(seed + 3)
             rng = np.random.default_rng(seed)
             rng.shuffle(unlabeled_indices)
             rng.shuffle(labeled_indices)
@@ -697,43 +604,26 @@ class Cropland(Dataset):
         state = self.data_map['states'][index]
         metadata = {'patch_num': patch_num, 'lat_lon': lat_lon, 'state': state,
                     'labeled': labeled}
-        if self.masked_pretrain:
-            input_as_target = img[self.in_bands, 1:-1, 1:-1]
-            output_as_target = img[self.out_bands, 1:-1, 1:-1]
-            if self.target_transform is not None:
-                input_as_target = self.target_transform(input_as_target)
-                output_as_target = self.target_transform(output_as_target)
-            target = [-100, input_as_target, output_as_target]
-            img = img[self.in_bands + self.out_bands, ...]
-            if self.transform is not None:
-                img = self.transform(img)
 
-            use_idx = np.random.choice(a=[1, 2])
-            metadata['use_idx'] = use_idx
-            if use_idx == 1:
-                img[:len(self.in_bands), :, :] = 0
-            elif use_idx == 2:
-                img[len(self.in_bands):, :, :] = 0
+        if self.out_bands is not None:
+            target = img[self.out_bands, 1:-1, 1:-1]
         else:
-            if self.out_bands is not None:
-                target = img[self.out_bands, 1:-1, 1:-1]
-            else:
-                bool_target = self.data_map['targets'][index]
-                target = np.array([bool_target], dtype='float32')
+            bool_target = self.data_map['targets'][index]
+            target = np.array([bool_target], dtype='float32')
 
-            img = img[self.in_bands, ...]
-            if self.target_transform is not None:
-                target = self.target_transform(target)
+        img = img[self.in_bands, ...]
+        if self.target_transform is not None:
+            target = self.target_transform(target)
 
-            if self.transform is not None:
-                img = self.transform(img)
+        if self.transform is not None:
+            img = self.transform(img)
 
-            if self.include_lat_lon:
-                img = append_lat_lon(img, lat_lon, normalize=True)
+        if self.include_lat_lon:
+            img = append_lat_lon(img, lat_lon, normalize=True)
 
-            if self.target_lat_lon:
-                assert self.out_bands is not None
-                target = append_lat_lon(target, lat_lon, normalize=True)
+        if self.target_lat_lon:
+            assert self.out_bands is not None
+            target = append_lat_lon(target, lat_lon, normalize=True)
 
         return {'data': img, 'target': target, 'domain_label': metadata}
 
@@ -742,49 +632,3 @@ class Cropland(Dataset):
         if self.use_unlabeled and not self.eval_mode:
             length += len(self.unlabeled_indices)
         return length
-
-    def get_mean(self):
-        '''
-        Returns the mean for this dataset. Useful for getting the mean of a
-        training set in order to standardize val and test sets.
-
-        Returns
-        -------
-        self.mean, which is a float or numpy.ndarray.
-        '''
-        return self.mean
-
-    def set_mean(self, mean):
-        '''
-        Sets the mean to use for standardization. Useful for setting the mean
-        of a val or test set from the mean of a training set.
-
-        Parameters
-        ----------
-        mean : Union[float, numpy.ndarray]
-            Mean to subtract from data.
-        '''
-        self.mean = mean
-
-    def get_std(self):
-        '''
-        Returns the std for this dataset. Useful for getting the std of a
-        training set in order to standardize val and test sets.
-
-        Returns
-        -------
-        self.std, which is a float or numpy.ndarray.
-        '''
-        return self.std
-
-    def set_std(self, std):
-        '''
-        Sets the std to use for standardization. Useful for setting the std of
-        a val or test set from the std of a training set.
-
-        Parameters
-        ----------
-        std : Union[float, numpy.ndarray]
-            Std to divide by for standardization.
-        '''
-        self.std = std
