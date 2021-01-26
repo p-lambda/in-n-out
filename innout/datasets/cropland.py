@@ -1,5 +1,5 @@
-from extrapolation.datasets import utils
-from extrapolation.data_utils import get_split_idxs
+from innout.datasets import utils
+from innout.data_utils import get_split_idxs
 from pathlib import Path
 import pickle
 import numpy as np
