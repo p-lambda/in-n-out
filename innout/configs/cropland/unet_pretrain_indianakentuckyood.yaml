@@ -1,0 +1,109 @@
+log_interval: 100
+use_cuda: True
+epochs: &epochs 100
+save_freq: *epochs
+batch_size: 256
+eval_batch_size: 256
+batch_gd: False
+
+optimizer:
+  classname: torch.optim.Adam
+  args:
+    lr: &lr 0.001
+    
+scheduler:
+  classname: torch.optim.lr_scheduler.StepLR
+  args:
+    step_size: 10
+    gamma: 0.5
+
+model:
+  classname: extrapolation.models.unet.UNet
+  args:
+    in_channels: 3
+    out_channels: 5
+    task: "image"
+
+train_transforms:
+  - classname: extrapolation.datasets.transforms.LambdaTransform
+    args:
+      function_path: numpy.nan_to_num
+  - classname: extrapolation.datasets.transforms.LambdaTransform
+    args:
+      function_path: torch.from_numpy
+  - classname: torchvision.transforms.Normalize
+    args:
+      mean: 0.5
+      std: 0.5
+
+train_target_transforms:
+  - classname: extrapolation.datasets.transforms.LambdaTransform
+    args:
+      function_path: numpy.nan_to_num
+  - classname: extrapolation.datasets.transforms.LambdaTransform
+    args:
+      function_path: torch.from_numpy
+  - classname: torchvision.transforms.Normalize
+    args:
+      mean: 0.5
+      std: 0.5      
+
+test_transforms:
+  - classname: extrapolation.datasets.transforms.LambdaTransform
+    args:
+      function_path: numpy.nan_to_num
+  - classname: extrapolation.datasets.transforms.LambdaTransform
+    args:
+      function_path: torch.from_numpy
+  - classname: torchvision.transforms.Normalize
+    args:
+      mean: 0.5
+      std: 0.5
+
+test_target_transforms:
+  - classname: extrapolation.datasets.transforms.LambdaTransform
+    args:
+      function_path: numpy.nan_to_num
+  - classname: extrapolation.datasets.transforms.LambdaTransform
+    args:
+      function_path: torch.from_numpy
+  - classname: torchvision.transforms.Normalize
+    args:
+      mean: 0.5
+      std: 0.5
+
+dataset:
+  classname: extrapolation.datasets.cropland.Cropland
+  args:
+    shuffle: True
+    seed: 42
+    try_local: True
+    cache_path: crops/dataset_condensed.pkl
+    use_template: True
+    in_bands: [1,2,3]
+    out_bands: [10,11,12]
+    target_lat_lon: True
+    unlabeled_prop: 0.95
+  train_args:
+    use_unlabeled: True
+    split: "nonindiana_kentucky-train"
+  val_args:
+    split: "nonindiana_kentucky-val"
+  test_args:
+    split: "nonindiana_kentucky-test"
+  test2_args:
+    split: "indiana_kentucky-test2"
+      
+dataloader:
+  args:
+    num_workers: 4
+
+loss:
+  classname: extrapolation.losses.MSELoss
+  args:
+    reduction: mean
+
+eval_loss:
+  classname: extrapolation.losses.MSELoss
+  args:
+    reduction: sum

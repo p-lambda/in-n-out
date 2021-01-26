@@ -5,7 +5,6 @@ import pickle
 import numpy as np
 import torch
 from torch.utils.data import Dataset
-import geopandas as gpd
 
 
 # Paths to differents folders/files.
@@ -175,6 +174,7 @@ def state_split(data_map, state_name, shapefile_path=SHAPEFILE_PATH):
     Dict[str, Union[str, numpy.ndarray]]
         Shallow copy of data_map whose points have been filtered.
     '''
+    import geopandas as gpd
     state_name = state_name.capitalize()
     state_bounds_gdf = gpd.read_file(shapefile_path)
     lats = data_map['lat_lons'][:, 0]
