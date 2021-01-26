@@ -14,9 +14,9 @@ import pandas as pd
 import wandb
 from sklearn.metrics import roc_auc_score, average_precision_score
 
-from extrapolation.load_utils import update_config, initialize, get_params
-from extrapolation.load_utils import init_dataset, init_dataloader
-from extrapolation.utils import now_to_str, DataParallel, to_device
+from innout.load_utils import update_config, initialize, get_params
+from innout.load_utils import init_dataset, init_dataloader
+from innout.utils import now_to_str, DataParallel, to_device
 
 
 def save_ckp(epoch, model, optimizer, scheduler, model_dir, chkpt_name):
