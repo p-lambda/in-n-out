@@ -1,0 +1,25 @@
+from setuptools import setup, find_packages
+
+setup(name='innout',
+      version='0.0.1',
+      description='In-N-Out ICLR 2021',
+      url='https://github.com/p-lambda/in-n-out',
+      author='Sang Michael Xie',
+      author_email='xie@cs.stanford.edu',
+      packages=find_packages('.'),
+      install_requires=[
+        'matplotlib',
+        'numpy',
+        'torch',
+        'torchvision',
+        'tqdm',
+        'pyyaml',
+        'requests',
+        'wandb',
+        'pandas',
+        'h5py',
+        'strconv',
+        'scikit-learn',
+        'scipy',
+        'cdsapi',
+      ])
