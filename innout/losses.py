@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torch import autograd
 from torch import optim
-from extrapolation.load_utils import initialize
+from innout.load_utils import initialize
 
 
 class WeightedSelfTrainLoss(nn.Module):
