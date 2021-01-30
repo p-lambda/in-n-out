@@ -18,17 +18,17 @@ scheduler:
     gamma: 0.5
 
 model:
-  classname: extrapolation.models.unet.UNet
+  classname: innout.models.unet.UNet
   args:
     in_channels: 3
     out_channels: 5
     task: "image"
 
 train_transforms:
-  - classname: extrapolation.datasets.transforms.LambdaTransform
+  - classname: innout.datasets.transforms.LambdaTransform
     args:
       function_path: numpy.nan_to_num
-  - classname: extrapolation.datasets.transforms.LambdaTransform
+  - classname: innout.datasets.transforms.LambdaTransform
     args:
       function_path: torch.from_numpy
   - classname: torchvision.transforms.Normalize
@@ -37,10 +37,10 @@ train_transforms:
       std: 0.5
 
 train_target_transforms:
-  - classname: extrapolation.datasets.transforms.LambdaTransform
+  - classname: innout.datasets.transforms.LambdaTransform
     args:
       function_path: numpy.nan_to_num
-  - classname: extrapolation.datasets.transforms.LambdaTransform
+  - classname: innout.datasets.transforms.LambdaTransform
     args:
       function_path: torch.from_numpy
   - classname: torchvision.transforms.Normalize
@@ -49,10 +49,10 @@ train_target_transforms:
       std: 0.5      
 
 test_transforms:
-  - classname: extrapolation.datasets.transforms.LambdaTransform
+  - classname: innout.datasets.transforms.LambdaTransform
     args:
       function_path: numpy.nan_to_num
-  - classname: extrapolation.datasets.transforms.LambdaTransform
+  - classname: innout.datasets.transforms.LambdaTransform
     args:
       function_path: torch.from_numpy
   - classname: torchvision.transforms.Normalize
@@ -61,10 +61,10 @@ test_transforms:
       std: 0.5
 
 test_target_transforms:
-  - classname: extrapolation.datasets.transforms.LambdaTransform
+  - classname: innout.datasets.transforms.LambdaTransform
     args:
       function_path: numpy.nan_to_num
-  - classname: extrapolation.datasets.transforms.LambdaTransform
+  - classname: innout.datasets.transforms.LambdaTransform
     args:
       function_path: torch.from_numpy
   - classname: torchvision.transforms.Normalize
@@ -73,7 +73,7 @@ test_target_transforms:
       std: 0.5
 
 dataset:
-  classname: extrapolation.datasets.cropland.Cropland
+  classname: innout.datasets.cropland.Cropland
   args:
     shuffle: True
     seed: 42
@@ -99,11 +99,11 @@ dataloader:
     num_workers: 4
 
 loss:
-  classname: extrapolation.losses.MSELoss
+  classname: innout.losses.MSELoss
   args:
     reduction: mean
 
 eval_loss:
-  classname: extrapolation.losses.MSELoss
+  classname: innout.losses.MSELoss
   args:
     reduction: sum
