@@ -133,3 +133,5 @@ dmypy.json
 
 /models/
 /innout/wandb/
+logs/
+innout-pseudolabels/
