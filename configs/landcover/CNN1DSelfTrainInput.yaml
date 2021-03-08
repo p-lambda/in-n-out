@@ -1,16 +1,16 @@
 log_interval: 100
 use_cuda: True
-save_freq: 200
+save_freq: 400
 epochs: &epochs 400
 batch_size: 128
-eval_batch_size: 256
+eval_batch_size: 128
 batch_gd: False
 num_classes: &num_classes 6
 
 optimizer:
   classname: torch.optim.SGD
   args:
-    lr: &lr 0.1
+    lr: &lr 0.01
     momentum: 0.9
 
 scheduler:
@@ -21,25 +21,30 @@ scheduler:
     num_epochs: *epochs
 
 model:
-  classname: innout.models.cnn1d.CNN1D
+  classname: innout.models.cnn1d.CNN1DMultitask
   args:
-    in_channels: 14
-    output_size: *num_classes
+    use_idx: 0
+    in_channels: 8
+    task_dims:
+      - [128, 1024, 6]
+      - [128, 1024, 12]
 
 dataset:
   classname: innout.datasets.landcover.Landcover
   args:
+    # root: .
+    # cache_path: landcover_data.pkl
     root: /u/nlp/data/landcover/timeseries_by_box_v2
+    cache_path: /u/nlp/data/landcover/landcover_v2.pkl
     include_NDVI: True
-    include_ERA5: True
+    include_ERA5: False
     standardize: True
     shuffle_domains: True
     seed: 1111
     use_cache: True
-    cache_path: /u/nlp/data/landcover/landcover_v2.pkl
-    use_unlabeled_id: False
+    unlabeled_prop: 0.9
+    use_unlabeled_id: True
     use_unlabeled_ood: False
-    unlabeled_prop: 0.5
     pretrain: False
     multitask: False
   train_args:
@@ -70,11 +75,13 @@ test_transforms:
       function_path: innout.datasets.transforms.tensor_to_float
 
 loss:
-  classname: torch.nn.CrossEntropyLoss
-  args:
-    reduction: mean
+    classname: innout.losses.WeightedSelfTrainLoss
+    args:
+      reduction: mean
+      eval: False
 
 eval_loss:
-  classname: torch.nn.CrossEntropyLoss
-  args:
-    reduction: sum
+    classname: torch.nn.CrossEntropyLoss
+    args:
+      reduction: sum
+      eval: True

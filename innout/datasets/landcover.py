@@ -8,8 +8,8 @@ from torch.utils.data import Dataset
 import re
 from innout.data_utils import get_split_idxs
 
-DATA_ROOT = '/u/nlp/data/landcover/timeseries_by_box'
-DATA_CACHE = '/juice/scr/rmjones/extrapolation/extrapolation/datasets/landcover.pkl'
+DATA_ROOT = 'timeseries_by_box_v2'
+DATA_CACHE = 'landcover_data.pkl'
 
 CLASSNAMES = ['savannas', 'permanent_wetlands', 'woody_savannas',
               'deciduous_needleleaf_forests', 'permanent_snow_and_ice',
@@ -155,7 +155,6 @@ def load_data(root=DATA_ROOT, use_cache=True, save_cache=False,
             domain_to_data = pickle.load(pkl_file)
     else:
         domain_to_data = load_from_file(root)
-        # TODO this codepath doesn't contain ERA5 data
 
     if save_cache:  # Default don't save.
         with open(cache_path, 'wb') as pkl_file:
@@ -205,7 +204,7 @@ def resample_ERA5(domain_to_data):
         domain_to_data[i] = tuple(domain_data)
 
 
-def add_ERA5(domain_to_data, noise_std=0.0):
+def add_ERA5(domain_to_data):
     '''
     Adds features from ERA5 features, assumed to be at index 5 of the tuples
     in domain_to_data with shape (num_examples, 12, num_features).
@@ -218,9 +217,6 @@ def add_ERA5(domain_to_data, noise_std=0.0):
     for i in domain_to_data:
         modis_data = domain_to_data[i][0]
         era5 = domain_to_data[i][4]
-
-        if noise_std > 0.0:
-            era5 += np.random.randn(*era5.shape) * noise_std
 
         domain_data = list(domain_to_data[i])  # Since tuples are immutable.
         domain_data[0] = np.concatenate([modis_data, era5], axis=1)
@@ -276,7 +272,6 @@ class Landcover(Dataset):
                  pretrain=False, masked_pretrain=False,
                  use_unlabeled_id=False, use_unlabeled_ood=False,
                  unlabeled_targets_path=None,
-                 z_noise_std=0.0,
                  standardize_unlabeled_sample_size=False,
                  **kwargs):
         '''
@@ -328,7 +323,6 @@ class Landcover(Dataset):
             Passed through to load_data() function.
         '''
         self.split = split
-        self.z_noise_std = z_noise_std
         self.eval_mode = eval_mode
         self.transform = transform
         self.target_transform = target_transform
@@ -358,14 +352,7 @@ class Landcover(Dataset):
             resample_ERA5(data_map)
 
         if include_ERA5:
-            if self.z_noise_std > 0.0:
-                rng_state = np.random.get_state()
-                np.random.seed(seed + 1947923)
-
-            add_ERA5(data_map, self.z_noise_std)
-
-            if self.z_noise_std > 0.0:
-                np.random.set_state(rng_state)
+            add_ERA5(data_map)
 
         # Try splitting by hemispheres first.
         split_by_hemi = False
