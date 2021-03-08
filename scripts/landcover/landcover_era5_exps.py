@@ -25,14 +25,18 @@ def get_python_cmd(kwargs=None):
         opts += ''.join([f"--{k} " for k, v in kwargs.items() if isinstance(v, bool) and v and '.' not in k])
     else:
         opts = ''
-    python_cmd = f'{INNOUT_ROOT_PARENT}/.env/bin/python ' +\
-        f'{INNOUT_ROOT}/main.py '
+    if args.use_cl:
+        python_cmd = f'python ' +\
+            f'{INNOUT_ROOT}/main.py '
+    else:
+        python_cmd = f'{INNOUT_ROOT_PARENT}/.env/bin/python ' +\
+            f'{INNOUT_ROOT}/main.py '
     python_cmd += opts
     return python_cmd
 
 
 def run_sbatch(python_cmd, job_name='landcover', nodes=1,
-               output='exp', gres='gpu:1', cpus_per_task=1, mem='16G'):
+               output='exp', gres='gpu:1', cpus_per_task=1, mem='16G', cl_extra_deps=None):
 
     if args.use_slurm:
         logpath = INNOUT_ROOT_PARENT / 'logs' / output
@@ -44,13 +48,15 @@ def run_sbatch(python_cmd, job_name='landcover', nodes=1,
 
         cmd += f'"{python_cmd}"'
     elif args.use_cl:
-        logpath = INNOUT_ROOT_PARENT / 'logs' / output
-        logpath.parent.mkdir(exist_ok=True)
-        run_sbatch_script = INNOUT_ROOT_PARENT / 'run_sbatch.sh'
+        cl_extra_deps_str = ' '.join([f":{dep}" for dep in cl_extra_deps])
         cmd = f'cl run -n {job_name} -w in-n-out-iclr --request-docker-image ananya/in-n-out \
                 --request-gpus 1 --request-memory 16g --request-queue tag=nlp \
-                :innout :configs :landcover_data --- '
-        cmd += f'"{python_cmd}"'
+                :innout :configs :landcover_data.pkl {cl_extra_deps_str} '
+        if cl_extra_deps is None:
+            cmd += f'"export PYTHONPATH=.; mkdir models; mkdir innout-pseudolabels; {python_cmd}"'
+        else:
+            cl_extra_deps_cps = ' '.join([f"cp -r {dep}/models/* models;" for dep in cl_extra_deps])
+            cmd += f'"export PYTHONPATH=.; mkdir models; mkdir innout-pseudolabels; {cl_extra_deps_cps} {python_cmd}"'
     else:
         cmd = python_cmd
     print(cmd)
@@ -179,7 +185,8 @@ def run_selftraining_exp(exp_name, model_dir_g, config_path_f, kwargs_f=None,
                          get_cmd_only=False):
 
     pseudolabel_dir = INNOUT_ROOT_PARENT / 'innout-pseudolabels'
-    pseudolabel_dir.mkdir(exist_ok=True, parents=True)
+    if not args.use_cl:
+        pseudolabel_dir.mkdir(exist_ok=True, parents=True)
     pseudolabel_path = pseudolabel_dir / f'{exp_name}.npy'
     python_cmd = ""
     if do_pseudolabels:
@@ -235,11 +242,18 @@ def run_innout_iterated(iterations=2):
 
     base_exp_id = f'{exp_type}_unlabeledprop{args.unlabeled_prop}_trial{args.trial}'
 
+    cl_extra_deps = []
+
     trial_cmd = ""
     for st_iteration in range(iterations):
         if st_iteration == 0:
-            model_dir_g = model_dir_root / f'landcover_aux-inputs_unlabeledprop{args.unlabeled_prop}_trial{args.trial}'
-            checkpoint_path_f = model_dir_root / f'landcover_aux-outputs_unlabeledprop{args.unlabeled_prop}_trial{args.trial}_pretrain' / 'best-checkpoint.pt'
+            aux_inputs_name = f'landcover_aux-inputs_unlabeledprop{args.unlabeled_prop}_trial{args.trial}'
+            aux_outputs_name = f'landcover_aux-outputs_unlabeledprop{args.unlabeled_prop}_trial{args.trial}_pretrain'
+            model_dir_g = model_dir_root / aux_inputs_name
+            checkpoint_path_f = model_dir_root / aux_outputs_name / 'best-checkpoint.pt'
+
+            cl_extra_deps.append(aux_inputs_name)
+            cl_extra_deps.append(aux_outputs_name)
         else:
             prev_exp_id = 'landcover_' + base_exp_id + f'_iter{st_iteration - 1}_unlabeledweight{unlabeled_weight}'
             model_dir_g = model_dir_root / prev_exp_id
@@ -260,7 +274,7 @@ def run_innout_iterated(iterations=2):
         if len(trial_cmd) > 0:
             trial_cmd += ' && '
         trial_cmd += cmd
-    run_sbatch(trial_cmd, job_name=base_exp_id, output=base_exp_id)
+    run_sbatch(trial_cmd, job_name=base_exp_id, output=base_exp_id, cl_extra_deps=cl_extra_deps)
 
 
 
@@ -282,14 +296,17 @@ def run_std_selftraining_exps(with_z=False):
     if with_z:
         kwargs['model.args.in_channels'] = 14
         kwargs['dataset.args.include_ERA5'] = True
+    aux_inputs_name = f'landcover_aux-inputs_unlabeledprop{args.unlabeled_prop}_trial{args.trial}'
+    model_dir_g = model_dir_root / aux_inputs_name
 
-    model_dir_g = model_dir_root / f'landcover_aux-inputs_unlabeledprop{args.unlabeled_prop}_trial{args.trial}'
-
-    run_selftraining_exp(
-            f'{exp_type}_unlabeledprop{args.unlabeled_prop}_trial{args.trial}',
+    exp_name = f'{exp_type}_unlabeledprop{args.unlabeled_prop}_trial{args.trial}'
+    cmd = run_selftraining_exp(
+            exp_name,
             model_dir_g=model_dir_g, config_path_f=config_path_f,
             kwargs_f=kwargs, seed=args.trial, do_pseudolabels=True,
-            unlabeled_weight=args.unlabeled_weight)
+            unlabeled_weight=args.unlabeled_weight,
+            get_cmd_only=True)
+    run_sbatch(cmd, job_name=exp_name, output=exp_name, cl_extra_deps=[aux_inputs_name])
 
 
 if __name__ == "__main__":
@@ -315,12 +332,19 @@ if __name__ == "__main__":
                         help='weight on unlabeled data for standard self-training')
 
     args = parser.parse_args()
+
+    if args.use_cl:
+        INNOUT_ROOT_PARENT = Path('.')
+        INNOUT_ROOT = Path('innout')
+
     model_subdir = f'landcover_unlabeledprop_{args.unlabeled_prop}'
     if args.standardize_unlabeled_sample_size:
         model_subdir += "_standardizeunlabeled"
 
     model_dir_root = INNOUT_ROOT_PARENT / 'models' / model_subdir
-    model_dir_root.mkdir(exist_ok=True, parents=True)
+
+    if not args.use_cl:
+        model_dir_root.mkdir(exist_ok=True, parents=True)
 
     seed = 1111
     splits = ['train', 'val', 'test']
