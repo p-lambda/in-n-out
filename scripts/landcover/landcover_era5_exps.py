@@ -48,15 +48,16 @@ def run_sbatch(python_cmd, job_name='landcover', nodes=1,
 
         cmd += f'"{python_cmd}"'
     elif args.use_cl:
-        cl_extra_deps_str = ' '.join([f":{dep}" for dep in cl_extra_deps])
-        cmd = f'cl run -n {job_name} -w in-n-out-iclr --request-docker-image ananya/in-n-out \
-                --request-gpus 1 --request-memory 16g --request-queue tag=nlp \
-                :innout :configs :landcover_data.pkl {cl_extra_deps_str} '
-        if cl_extra_deps is None:
-            cmd += f'"export PYTHONPATH=.; mkdir models; mkdir innout-pseudolabels; {python_cmd}"'
-        else:
+        if cl_extra_deps is not None:
+            cl_extra_deps_str = ' '.join([f":{dep}" for dep in cl_extra_deps])
             cl_extra_deps_cps = ' '.join([f"cp -r {dep}/models/* models;" for dep in cl_extra_deps])
-            cmd += f'"export PYTHONPATH=.; mkdir models; mkdir innout-pseudolabels; {cl_extra_deps_cps} {python_cmd}"'
+        else:
+            cl_extra_deps_str = ''
+            cl_extra_deps_cps = ''
+        cmd = f'cl run -n {job_name} -w in-n-out-iclr --request-docker-image ananya/in-n-out \
+                --request-gpus 1 --request-memory 24g --request-queue tag=nlp \
+                :innout :configs :landcover_data.pkl {cl_extra_deps_str} '
+        cmd += f'"export PYTHONPATH=.; mkdir models; mkdir innout-pseudolabels; {cl_extra_deps_cps} {python_cmd}"'
     else:
         cmd = python_cmd
     print(cmd)
