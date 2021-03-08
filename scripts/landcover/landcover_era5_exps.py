@@ -43,6 +43,14 @@ def run_sbatch(python_cmd, job_name='landcover', nodes=1,
               f'--gres={gres} --cpus-per-task={cpus_per_task} --mem={mem} {run_sbatch_script} '
 
         cmd += f'"{python_cmd}"'
+    elif args.use_cl:
+        logpath = INNOUT_ROOT_PARENT / 'logs' / output
+        logpath.parent.mkdir(exist_ok=True)
+        run_sbatch_script = INNOUT_ROOT_PARENT / 'run_sbatch.sh'
+        cmd = f'cl run -n {job_name} -w in-n-out-iclr --request-docker-image ananya/in-n-out \
+                --request-gpus 1 --request-memory 16g --request-queue tag=nlp \
+                :innout :configs :landcover_data --- '
+        cmd += f'"{python_cmd}"'
     else:
         cmd = python_cmd
     print(cmd)
@@ -77,7 +85,7 @@ def run_exp(exp_name, config_path, kwargs):
 
 
 def run_base_exps(aux_inputs=False):
-    config_path = INNOUT_ROOT / 'configs/landcover/CNN1D.yaml'
+    config_path = INNOUT_ROOT_PARENT / 'configs/landcover/CNN1D.yaml'
 
     kwargs = {'dataset.args.unlabeled_prop': args.unlabeled_prop,
               'epochs': 400,
@@ -141,7 +149,7 @@ def run_pretrain_exp(exp_name, config_path, kwargs, use_unlabeled_id=True, use_u
 def run_pretrain_exps(use_unlabeled_id=True, use_unlabeled_ood=True):
     exp_type = 'aux-outputs'
 
-    config_path = INNOUT_ROOT / 'configs/landcover/CNN1DPretrain.yaml'
+    config_path = INNOUT_ROOT_PARENT / 'configs/landcover/CNN1DPretrain.yaml'
 
     # add as feature
     kwargs = {'overwrite': args.overwrite,
@@ -202,7 +210,7 @@ def run_selftraining_exp(exp_name, model_dir_g, config_path_f, kwargs_f=None,
 
 def run_innout_iterated(iterations=2):
     exp_type = 'in-n-out'
-    config_path_f = INNOUT_ROOT / 'configs/landcover/CNN1DSelfTrainInput.yaml'
+    config_path_f = INNOUT_ROOT_PARENT / 'configs/landcover/CNN1DSelfTrainInput.yaml'
     unlabeled_weight = 0.5
 
     do_pseudolabels = True
@@ -232,14 +240,6 @@ def run_innout_iterated(iterations=2):
         if st_iteration == 0:
             model_dir_g = model_dir_root / f'landcover_aux-inputs_unlabeledprop{args.unlabeled_prop}_trial{args.trial}'
             checkpoint_path_f = model_dir_root / f'landcover_aux-outputs_unlabeledprop{args.unlabeled_prop}_trial{args.trial}_pretrain' / 'best-checkpoint.pt'
-            # # just copy over
-            # base_exp_id_innout = f'input_selftrain_unlabeledprop{args.unlabeled_prop}_trial{trial}'
-            # innout_src = model_dir_root / ('landcover_' + base_exp_id_innout + f'_unlabeledweight{unlabeled_weight}')
-            # checkpoint_path_f_tgt = model_dir_root / ('landcover_' + base_exp_id + f'_iter0_dropout{dropout}_unlabeledweight{unlabeled_weight}')
-
-            # if not Path(checkpoint_path_f_tgt).exists():
-            #     shutil.copytree(innout_src, checkpoint_path_f_tgt)
-            # continue
         else:
             prev_exp_id = 'landcover_' + base_exp_id + f'_iter{st_iteration - 1}_unlabeledweight{unlabeled_weight}'
             model_dir_g = model_dir_root / prev_exp_id
@@ -268,9 +268,7 @@ def run_std_selftraining_exps(with_z=False):
     exp_type = 'std_selftrain'
     if with_z:
         exp_type = 'std_selftrain_withz'
-    config_path_f = INNOUT_ROOT / 'configs/landcover/CNN1DSelfTrainInput.yaml'
-
-    do_pseudolabels = True
+    config_path_f = INNOUT_ROOT_PARENT / 'configs/landcover/CNN1DSelfTrainInput.yaml'
 
     kwargs = {'overwrite': args.overwrite,
               'no_wandb': args.no_wandb,
@@ -290,9 +288,8 @@ def run_std_selftraining_exps(with_z=False):
     run_selftraining_exp(
             f'{exp_type}_unlabeledprop{args.unlabeled_prop}_trial{args.trial}',
             model_dir_g=model_dir_g, config_path_f=config_path_f,
-            kwargs_f=kwargs, seed=args.trial, do_pseudolabels=do_pseudolabels,
+            kwargs_f=kwargs, seed=args.trial, do_pseudolabels=True,
             unlabeled_weight=args.unlabeled_weight)
-    do_pseudolabels = False
 
 
 if __name__ == "__main__":
@@ -308,8 +305,8 @@ if __name__ == "__main__":
                         help='make unlabeled data size equal across selftrain exps')
     parser.add_argument('--mode', type=str, default='baseline',
                         help='which experiment to run (baseline, aux-input, aux-output, in-n-out)')
-    # TODO change this to something non-informative
     parser.add_argument('--use_slurm', action='store_true', default=False, help='use slurm')
+    parser.add_argument('--use_cl', action='store_true', default=False, help='use codalab')
     parser.add_argument('--slurm_partition', type=str, default='jag-standard',
                         help='which slurm partition to use')
     parser.add_argument('--slurm_exclude', type=str, default='jagupard[4-8],jagupard[26-29]',

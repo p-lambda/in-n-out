@@ -29,14 +29,16 @@ model:
 dataset:
   classname: innout.datasets.landcover.Landcover
   args:
+    # root: .
+    # cache_path: landcover_data.pkl
     root: /u/nlp/data/landcover/timeseries_by_box_v2
+    cache_path: /u/nlp/data/landcover/landcover_v2.pkl
     include_NDVI: True
     include_ERA5: True
     standardize: True
     shuffle_domains: True
     seed: 1111
     use_cache: True
-    cache_path: /u/nlp/data/landcover/landcover_v2.pkl
     use_unlabeled_id: False
     use_unlabeled_ood: False
     unlabeled_prop: 0.5
