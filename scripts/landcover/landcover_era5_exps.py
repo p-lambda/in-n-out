@@ -193,9 +193,14 @@ def run_selftraining_exp(exp_name, model_dir_g, config_path_f, kwargs_f=None,
     python_cmd = ""
     if do_pseudolabels:
         get_pseudolabels_script = INNOUT_ROOT_PARENT / 'scripts' / 'get_pseudolabels.py'
-        python_cmd = f'{INNOUT_ROOT_PARENT}/.env/bin/python ' +\
-                     f'{get_pseudolabels_script} --model_dir {model_dir_g} ' +\
-                     f'--pseudolabel_path {pseudolabel_path} --seed {seed} && '
+        if args.use_cl:
+            python_cmd = f'python ' +\
+                         f'{get_pseudolabels_script} --model_dir {model_dir_g} ' +\
+                         f'--pseudolabel_path {pseudolabel_path} --seed {seed} && '
+        else:
+            python_cmd = f'{INNOUT_ROOT_PARENT}/.env/bin/python ' +\
+                         f'{get_pseudolabels_script} --model_dir {model_dir_g} ' +\
+                         f'--pseudolabel_path {pseudolabel_path} --seed {seed} && '
 
     exp_name += f'_unlabeledweight{unlabeled_weight}'
 
