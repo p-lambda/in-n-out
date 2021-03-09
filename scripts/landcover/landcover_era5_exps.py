@@ -55,7 +55,7 @@ def run_sbatch(python_cmd, job_name='landcover', nodes=1,
             cl_extra_deps_str = ''
             cl_extra_deps_cps = ''
         cmd = f'cl run -n {job_name} -w in-n-out-iclr --request-docker-image ananya/in-n-out \
-                --request-gpus 1 --request-memory 24g --request-queue tag=nlp \
+                --request-gpus 1 --request-memory 16g --request-queue tag=nlp \
                 :innout :configs :landcover_data.pkl {cl_extra_deps_str} '
         cmd += f'"export PYTHONPATH=.; mkdir models; mkdir innout-pseudolabels; {cl_extra_deps_cps} {python_cmd}"'
     else:
@@ -82,7 +82,7 @@ def run_job_chain(kwargs_list, job_name='landcover', output='logs',
 
 
 def run_exp(exp_name, config_path, kwargs):
-    model_dir = model_dir_root / f'landcover_{exp_name}'
+    model_dir = model_dir_root / exp_name
     if kwargs is None:
         kwargs = {}
     kwargs.update({'config': config_path, 'model_dir': model_dir, 'run_name': exp_name})
@@ -105,15 +105,15 @@ def run_base_exps(aux_inputs=False):
               'group_name': 'landcover'}
 
     if aux_inputs:
-        run_exp(f'aux-inputs_unlabeledprop{args.unlabeled_prop}_trial{args.trial}', config_path, kwargs)
+        run_exp(f'landcover_aux-inputs_unlabeledprop{args.unlabeled_prop}_trial{args.trial}', config_path, kwargs)
     else:
         # don't add as feature
         kwargs.update({'dataset.args.include_ERA5': False, 'model.args.in_channels': 8})
-        run_exp(f'baseline_unlabeledprop{args.unlabeled_prop}_trial{args.trial}', config_path, kwargs)
+        run_exp(f'landcover_baseline_unlabeledprop{args.unlabeled_prop}_trial{args.trial}', config_path, kwargs)
 
 
 def run_pretrain_exp(exp_name, config_path, kwargs, use_unlabeled_id=True, use_unlabeled_ood=True, seed=1111):
-    model_dir = model_dir_root / f'landcover_{exp_name}'
+    model_dir = model_dir_root / exp_name
     if kwargs is None:
         kwargs = {}
 
@@ -167,7 +167,7 @@ def run_pretrain_exps(use_unlabeled_id=True, use_unlabeled_ood=True):
     if args.standardize_unlabeled_sample_size:
         kwargs['dataset.args.standardize_unlabeled_sample_size'] = True
 
-    exp_name = f'{exp_type}_unlabeledprop{args.unlabeled_prop}'
+    exp_name = f'landcover_{exp_type}_unlabeledprop{args.unlabeled_prop}'
     if use_unlabeled_id and not use_unlabeled_ood:
         exp_name += '_only_unlabeled_id'
     if not use_unlabeled_id and use_unlabeled_ood:
@@ -198,7 +198,7 @@ def run_selftraining_exp(exp_name, model_dir_g, config_path_f, kwargs_f=None,
 
     exp_name += f'_unlabeledweight{unlabeled_weight}'
 
-    model_dir_f = model_dir_root / f'landcover_{exp_name}'
+    model_dir_f = model_dir_root / exp_name
     if kwargs_f is None:
         kwargs_f = {}
 
@@ -241,7 +241,7 @@ def run_innout_iterated(iterations=2):
     kwargs['optimizer.args.lr'] = 0.05
     kwargs['scheduler.args.lr'] = 0.05
 
-    base_exp_id = f'{exp_type}_unlabeledprop{args.unlabeled_prop}_trial{args.trial}'
+    base_exp_id = f'landcover_{exp_type}_unlabeledprop{args.unlabeled_prop}_trial{args.trial}'
 
     cl_extra_deps = []
 
@@ -254,9 +254,10 @@ def run_innout_iterated(iterations=2):
             checkpoint_path_f = model_dir_root / aux_outputs_name / 'best-checkpoint.pt'
 
             cl_extra_deps.append(aux_inputs_name)
-            cl_extra_deps.append(aux_outputs_name)
+            # have to take off '_pretrain'
+            cl_extra_deps.append('_'.join(aux_outputs_name.split('_')[:-1]))
         else:
-            prev_exp_id = 'landcover_' + base_exp_id + f'_iter{st_iteration - 1}_unlabeledweight{unlabeled_weight}'
+            prev_exp_id = base_exp_id + f'_iter{st_iteration - 1}_unlabeledweight{unlabeled_weight}'
             model_dir_g = model_dir_root / prev_exp_id
             checkpoint_path_f = model_dir_g / 'best-checkpoint.pt'
             # add some regularization for iterated self training
@@ -300,7 +301,7 @@ def run_std_selftraining_exps(with_z=False):
     aux_inputs_name = f'landcover_aux-inputs_unlabeledprop{args.unlabeled_prop}_trial{args.trial}'
     model_dir_g = model_dir_root / aux_inputs_name
 
-    exp_name = f'{exp_type}_unlabeledprop{args.unlabeled_prop}_trial{args.trial}'
+    exp_name = f'landcover_{exp_type}_unlabeledprop{args.unlabeled_prop}_trial{args.trial}'
     cmd = run_selftraining_exp(
             exp_name,
             model_dir_g=model_dir_g, config_path_f=config_path_f,
