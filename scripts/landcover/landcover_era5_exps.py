@@ -50,7 +50,7 @@ def run_sbatch(python_cmd, job_name='landcover', nodes=1,
     elif args.use_cl:
         if cl_extra_deps is not None:
             cl_extra_deps_str = ' '.join([f":{dep}" for dep in cl_extra_deps])
-            cl_extra_deps_cps = ' '.join([f"cp -r {dep}/models/{model_subdir}/* models/{model_subdir};" for dep in cl_extra_deps])
+            cl_extra_deps_cps = ' '.join([f"cp -r {dep}/models/{model_subdir}/* models/{model_subdir};" for dep in cl_extra_deps if not dep.endswith('.py')])
             cl_extra_deps_cps = f'mkdir models/{model_subdir}; ' + cl_extra_deps_cps
         else:
             cl_extra_deps_str = ''
@@ -192,12 +192,13 @@ def run_selftraining_exp(exp_name, model_dir_g, config_path_f, kwargs_f=None,
     pseudolabel_path = pseudolabel_dir / f'{exp_name}.npy'
     python_cmd = ""
     if do_pseudolabels:
-        get_pseudolabels_script = INNOUT_ROOT_PARENT / 'scripts' / 'get_pseudolabels.py'
         if args.use_cl:
+            get_pseudolabels_script = 'get_pseudolabels.py'
             python_cmd = f'python ' +\
                          f'{get_pseudolabels_script} --model_dir {model_dir_g} ' +\
                          f'--pseudolabel_path {pseudolabel_path} --seed {seed} && '
         else:
+            get_pseudolabels_script = INNOUT_ROOT_PARENT / 'scripts' / 'get_pseudolabels.py'
             python_cmd = f'{INNOUT_ROOT_PARENT}/.env/bin/python ' +\
                          f'{get_pseudolabels_script} --model_dir {model_dir_g} ' +\
                          f'--pseudolabel_path {pseudolabel_path} --seed {seed} && '
@@ -249,7 +250,7 @@ def run_innout_iterated(iterations=2):
 
     base_exp_id = f'landcover_{exp_type}_unlabeledprop{args.unlabeled_prop}_trial{args.trial}'
 
-    cl_extra_deps = []
+    cl_extra_deps = ['get_pseudolabels.py']
 
     trial_cmd = ""
     for st_iteration in range(iterations):
@@ -314,7 +315,7 @@ def run_std_selftraining_exps(with_z=False):
             kwargs_f=kwargs, seed=args.trial, do_pseudolabels=True,
             unlabeled_weight=args.unlabeled_weight,
             get_cmd_only=True)
-    run_sbatch(cmd, job_name=exp_name, output=exp_name, cl_extra_deps=[aux_inputs_name])
+    run_sbatch(cmd, job_name=exp_name, output=exp_name, cl_extra_deps=['get_pseudolabels.py', aux_inputs_name])
 
 
 if __name__ == "__main__":
