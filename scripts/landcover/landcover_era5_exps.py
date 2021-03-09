@@ -50,7 +50,8 @@ def run_sbatch(python_cmd, job_name='landcover', nodes=1,
     elif args.use_cl:
         if cl_extra_deps is not None:
             cl_extra_deps_str = ' '.join([f":{dep}" for dep in cl_extra_deps])
-            cl_extra_deps_cps = ' '.join([f"cp -r {dep}/models/* models;" for dep in cl_extra_deps])
+            cl_extra_deps_cps = ' '.join([f"cp -r {dep}/models/{model_subdir}/* models/{model_subdir};" for dep in cl_extra_deps])
+            cl_extra_deps_cps = f'mkdir models/{model_subdir}; ' + cl_extra_deps_cps
         else:
             cl_extra_deps_str = ''
             cl_extra_deps_cps = ''
