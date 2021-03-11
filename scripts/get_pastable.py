@@ -28,10 +28,7 @@ def get_res(model_dir, val_metric='val_accuracy', take_max=True, metrics=None,
     with open(model_dir / 'config.json', 'r') as f:
         config = json.load(f)
 
-    if config_keys is None:
-        config_keys = ['run_name', 'wandb_url']
-
-    config_list = [(k, config[k]) for k in config_keys]
+    config_list =[('run_name', Path(config['model_dir']).name)]
 
     res_path = model_dir / 'stats_eval.tsv'
     try:
@@ -126,17 +123,5 @@ if __name__ == "__main__":
             res = (trial_groups.std() / np.sqrt(5) * 1.645).reset_index()
         res = res.assign(num_trials=trial_groups.size().reset_index()[0])
 
-    tmp_file_dir = Path('/tmp')
-    tmp_file = str(tmp_file_dir / f'res_{str(uuid.uuid4())[:4]}.tsv')
-
-    if args.s:
-        res.to_csv(tmp_file, sep='\t', index=None, header=False)
-    else:
-        res.to_csv(tmp_file, sep='\t', index=None)
-    with open(tmp_file, 'r') as f:
-        for line in f:
-            print(line.strip())
-    cmd = f'xclip -sel clip {tmp_file}'
-    subprocess.run(shlex.split(cmd))
-    print(f"Results saved at {tmp_file}")
-    Path(tmp_file).chmod(0o777)
+    res.to_json('results.json', orient='records', lines=True)
+    print(res)

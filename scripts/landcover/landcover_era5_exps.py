@@ -245,8 +245,8 @@ def run_innout_iterated(iterations=2):
     #     kwargs['optimizer.args.lr'] = 0.05
     #     kwargs['scheduler.args.lr'] = 0.05
 
-    kwargs['optimizer.args.lr'] = 0.05
-    kwargs['scheduler.args.lr'] = 0.05
+    kwargs['optimizer.args.lr'] = 0.1
+    kwargs['scheduler.args.lr'] = 0.1
 
     base_exp_id = f'landcover_{exp_type}_unlabeledprop{args.unlabeled_prop}_trial{args.trial}'
 
