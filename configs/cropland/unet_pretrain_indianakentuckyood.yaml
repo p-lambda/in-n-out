@@ -77,8 +77,7 @@ dataset:
   args:
     shuffle: True
     seed: 42
-    try_local: True
-    cache_path: crops/dataset_condensed.pkl
+    cache_path: cropland_data.pkl
     use_template: True
     in_bands: [1,2,3]
     out_bands: [10,11,12]
