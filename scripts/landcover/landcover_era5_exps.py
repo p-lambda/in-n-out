@@ -55,7 +55,7 @@ def run_sbatch(python_cmd, job_name='landcover', nodes=1,
         else:
             cl_extra_deps_str = ''
             cl_extra_deps_cps = ''
-        cmd = f'cl run -n {job_name} -w in-n-out-iclr --request-docker-image ananya/in-n-out \
+        cmd = f'cl run -n {job_name} -w in-n-out-iclr-landcover --request-docker-image ananya/in-n-out \
                 --request-gpus 1 --request-memory 16g --request-queue tag=nlp \
                 :innout :configs :landcover_data.pkl {cl_extra_deps_str} '
         cmd += f'"export PYTHONPATH=.; mkdir models; mkdir innout-pseudolabels; {cl_extra_deps_cps} {python_cmd}"'
@@ -237,16 +237,10 @@ def run_innout_iterated(iterations=2):
               'restart_epoch_count': True,
               'epochs': 400}
 
-    # TODO can we use 0.05 for all the learning rates
-    # kwargs['optimizer.args.lr'] = 0.1
-    # kwargs['scheduler.args.lr'] = 0.1
-    # # XXX hack - trial 5 was going to nan
-    # if args.trial == 5:
-    #     kwargs['optimizer.args.lr'] = 0.05
-    #     kwargs['scheduler.args.lr'] = 0.05
-
     kwargs['optimizer.args.lr'] = 0.1
     kwargs['scheduler.args.lr'] = 0.1
+    # kwargs['optimizer.args.lr'] = 0.05
+    # kwargs['scheduler.args.lr'] = 0.05
 
     base_exp_id = f'landcover_{exp_type}_unlabeledprop{args.unlabeled_prop}_trial{args.trial}'
 
@@ -260,6 +254,9 @@ def run_innout_iterated(iterations=2):
             model_dir_g = model_dir_root / aux_inputs_name
             checkpoint_path_f = model_dir_root / aux_outputs_name / 'best-checkpoint.pt'
 
+            curr_kwargs = kwargs.copy()
+            curr_kwargs['dataset.args.use_unlabeled_id'] = True
+            curr_kwargs['dataset.args.use_unlabeled_ood'] = False
             cl_extra_deps.append(aux_inputs_name)
             # have to take off '_pretrain'
             cl_extra_deps.append('_'.join(aux_outputs_name.split('_')[:-1]))
@@ -268,16 +265,19 @@ def run_innout_iterated(iterations=2):
             model_dir_g = model_dir_root / prev_exp_id
             checkpoint_path_f = model_dir_g / 'best-checkpoint.pt'
             # add some regularization for iterated self training
-            kwargs['optimizer.args.weight_decay'] = 0.0
-            kwargs['model.args.dropout_prob'] = 0.5
+            curr_kwargs = kwargs.copy()
+            curr_kwargs['dataset.args.use_unlabeled_id'] = True
+            curr_kwargs['dataset.args.use_unlabeled_ood'] = True
+            curr_kwargs['optimizer.args.weight_decay'] = 0.0
+            curr_kwargs['model.args.dropout_prob'] = 0.5
 
-        kwargs.update({'checkpoint_path': checkpoint_path_f})
+        curr_kwargs.update({'checkpoint_path': checkpoint_path_f})
 
         curr_exp_id = base_exp_id + f'_iter{st_iteration}'
         cmd = run_selftraining_exp(
                 curr_exp_id,
                 model_dir_g=model_dir_g, config_path_f=config_path_f,
-                kwargs_f=kwargs, seed=args.trial, do_pseudolabels=do_pseudolabels,
+                kwargs_f=curr_kwargs, seed=args.trial, do_pseudolabels=do_pseudolabels,
                 unlabeled_weight=unlabeled_weight,
                 get_cmd_only=True)
         if len(trial_cmd) > 0:
