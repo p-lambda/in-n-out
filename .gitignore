@@ -135,3 +135,7 @@ dmypy.json
 /innout/wandb/
 logs/
 innout-pseudolabels/
+/scripts/landcover/wandb
+/scripts/landcover/logs
+/pseudolabels/
+

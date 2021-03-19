@@ -39,6 +39,69 @@ STATE_TO_INDEX = {state: index for index, state in enumerate(STATE_NAMES)}
 VALID_SPLITS = ('train', 'val', 'test', 'test2')
 
 
+def remap_patch_num(patch_num):
+    '''
+    Remaps a Landsat patch number to an index in row-major order (i.e., left to
+    right, top to bottom). The patch numbers are originally in row-major
+    relative to their surrounding rectangular regions (see Section 3.5 in
+    "Weakly Supervised Deep Learning for Segmentation of Remote Sensing
+    Imagery" by Wang et al. for more details). This function maps the patch
+    numbers so that they are in row-major order with respect to the entire
+    geographic region.
+
+    Parameters
+    ----------
+    patch_num : int
+        Patch number to remap.
+
+    Returns
+    -------
+    int
+        Remapped patch number.
+    '''
+    # Compute row and column of surrounding rectangle.
+    rect_idx = patch_num // NUM_PATCHES_PER_RECT
+    rect_row = rect_idx // NUM_RECTS_PER_ROW
+    rect_col = rect_idx % NUM_RECTS_PER_ROW
+
+    # Compute top-left index in rectangle.
+    first_idx = rect_row * NUM_PATCHES_PER_RECT * NUM_RECTS_PER_ROW
+    first_idx += rect_col * NUM_PATCHES_PER_RECT_ROW
+
+    # Compute row and column of patch relative to rectangle.
+    inner_idx = patch_num % NUM_PATCHES_PER_RECT
+    inner_row = inner_idx // NUM_PATCHES_PER_RECT_ROW
+    inner_col = inner_idx % NUM_PATCHES_PER_RECT_ROW
+
+    # Returns remapped patch number.
+    return first_idx + inner_row * NUM_PATCHES_PER_ROW + inner_col
+
+
+def patch_num_to_lat_lon(patch_num):
+    '''
+    Converts a patch number into a lat/lon coordinate. Each patch is 50 x 50
+    pixels, where each pixel is 30m x 30m. The entire region is 328 x 592 in
+    terms of patches. The patch numbers are ordered from left to right, top to
+    bottom.
+
+    Parameters
+    ----------
+    patch_num : int
+        Patch number.
+
+    Returns
+    -------
+    lat_lon : Tuple[int, int]
+        Latitude and longitude of the center of the patch.
+    '''
+    patch_num = remap_patch_num(patch_num)
+    row_num = patch_num // NUM_PATCHES_PER_ROW
+    col_num = patch_num % NUM_PATCHES_PER_ROW
+    lat = TOP_LAT - (row_num + 0.5) * LAT_PER_PATCH
+    lon = LEFT_LON + (col_num + 0.5) * LON_PER_PATCH
+    return np.array([lat, lon])
+
+
 def load_from_disk(patch_dir_path=CONDENSED_PATCH_DIR_PATH,
                    label_dir_path=LABEL_DIR_PATH, in_memory=True):
     '''
@@ -89,7 +152,7 @@ def load_from_disk(patch_dir_path=CONDENSED_PATCH_DIR_PATH,
 
 def load_data(patch_dir_path=CONDENSED_PATCH_DIR_PATH,
               label_dir_path=LABEL_DIR_PATH, in_memory=True, use_cache=True,
-              try_local=True, copy_local=False, save_cache=False,
+              try_local=False, copy_local=False, save_cache=False,
               cache_path=CONDENSED_DATA_CACHE):
     '''
     Reads the Cropland dataset from the filesystem and returns a map of the
