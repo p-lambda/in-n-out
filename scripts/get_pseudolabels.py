@@ -40,17 +40,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Get pseudolabels for self training')
     parser.add_argument('--model_dir', type=str, help='Directory of model for generating pseudolabels')
     parser.add_argument('--pseudolabel_path', type=str, help='path for saving pseudolabels')
-    parser.add_argument('--seed', type=str, help='seed to use for data splitting')
+    parser.add_argument('--use_unlabeled_id', action='store_true', help='use unlabeled id')
+    parser.add_argument('--use_unlabeled_ood', action='store_true', help='use_unlabeled ood')
     args = parser.parse_args()
 
     config_path = Path(args.model_dir) / 'config.json'
     with open(config_path, 'r') as f:
         config_g = json.load(f)
     pseudolabel_dataset_config = deepcopy(config_g)
-    pseudolabel_dataset_config['dataset']['args']['use_unlabeled_id'] = True
-    pseudolabel_dataset_config['dataset']['args']['use_unlabeled_ood'] = False
+    pseudolabel_dataset_config['dataset']['args']['use_unlabeled_id'] = args.use_unlabeled_id
+    pseudolabel_dataset_config['dataset']['args']['use_unlabeled_ood'] = args.use_unlabeled_ood
 
-    pseudolabel_dataset_config['dataset.args.seed'] = args.seed
+    pseudolabel_dataset_config['dataset']['args']['seed'] = config_g['dataset']['args']['seed']
     pseudolabels_id = get_pseudolabels(args.model_dir, pseudolabel_dataset_config)
     # save the pseudolabels
     np.save(args.pseudolabel_path, pseudolabels_id)

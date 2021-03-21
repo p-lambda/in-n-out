@@ -196,12 +196,17 @@ def run_selftraining_exp(exp_name, model_dir_g, config_path_f, kwargs_f=None,
             get_pseudolabels_script = 'get_pseudolabels.py'
             python_cmd = f'python ' +\
                          f'{get_pseudolabels_script} --model_dir {model_dir_g} ' +\
-                         f'--pseudolabel_path {pseudolabel_path} --seed {seed} && '
+                         f'--pseudolabel_path {pseudolabel_path} --use_unlabeled_id '
+
         else:
             get_pseudolabels_script = INNOUT_ROOT_PARENT / 'scripts' / 'get_pseudolabels.py'
             python_cmd = f'{INNOUT_ROOT_PARENT}/.env/bin/python ' +\
                          f'{get_pseudolabels_script} --model_dir {model_dir_g} ' +\
-                         f'--pseudolabel_path {pseudolabel_path} --seed {seed} && '
+                         f'--pseudolabel_path {pseudolabel_path} --use_unlabeled_id '
+
+        if kwargs_f['dataset.args.use_unlabeled_ood']:
+            python_cmd += '--use_unlabeled_ood '
+        python_cmd += '&& '
 
     exp_name += f'_unlabeledweight{unlabeled_weight}'
 
