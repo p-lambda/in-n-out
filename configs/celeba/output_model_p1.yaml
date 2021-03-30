@@ -1,0 +1,71 @@
+log_interval: 100
+use_cuda: True
+save_freq: 25
+epochs: &epochs 25
+batch_size: 128
+eval_batch_size: 128
+batch_gd: False
+
+optimizer:
+  classname: torch.optim.SGD
+  args:
+    lr: &lr 0.1
+    momentum: 0.9
+
+scheduler:
+  classname: innout.schedulers.CosineLR
+  args:
+    optimizer: null
+    lr: *lr
+    num_epochs: *epochs
+
+model:
+  classname: innout.models.resnet.ResNetMultitask
+  args:
+    num_channels: 3
+    task_dims: [[1], [7]]
+    use_idx: 1
+
+train_transforms:
+  - classname: innout.datasets.celeba.tensor_transform
+
+test_transforms:
+  - classname: innout.datasets.celeba.tensor_transform
+
+dataset:
+  classname: innout.datasets.celeba.CelebA
+  args:
+    seed: 0
+    target_attribute: 'Male'
+    meta_attributes: ['Bald', 'Bangs', 'Mustache', 'Smiling', '5_o_Clock_Shadow', 'Oval_Face', 'Heavy_Makeup']
+    num_in_labeled: 2000
+    num_in_unlabeled: 30000
+    num_in_val: 1000
+    num_in_test: 1000
+    num_out_labeled: 100
+    num_out_unlabeled: 3000
+    num_out_test: 1000
+    pos_fraction: 0.5
+    meta_as_input: False
+    in_domain_selector: 'not_wearing_hat'
+    out_domain_selector: 'wearing_hat'
+    meta_as_target: True
+    pickle_file_path: '/juice/scr/ananya/celeba_train_pickle'
+  train_args:
+    split: 'out_unlabeled'
+  test2_args:
+    split: 'test2'
+
+dataloader:
+  args:
+    num_workers: 16
+
+loss:
+  classname: losses.BCEMultiTaskLoss
+  args:
+    reduction: 'mean'
+
+eval_loss:
+  classname: losses.BCEMultiTaskLoss
+  args:
+    reduction: 'mean'
