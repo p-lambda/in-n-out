@@ -53,21 +53,14 @@ def run_codalab(python_cmd, job_name, gpus=1, mem='16G', cpus=1, nlp=True):
         nlp_opt = '--request-queue tag=nlp '
     else:
         nlp_opt = ''
-    bundles = ':innout :configs :celeba_pickle '
+    bundles = ':innout :configs :celeba_pickle :scripts '
     makedirs = '"export PYTHONPATH="."; mkdir logs; mkdir outputs; '
     codalab_cmd = prefix + nlp_opt + bundles + makedirs + python_cmd + '"'
     print(codalab_cmd)
     subprocess.run(shlex.split(codalab_cmd))
 
 
-def run_job_chain(kwargs_list, job_name, output, sbatch_script_path, python_path, code_path,
-                  codalab=False, mail_type='END,FAIL', mail_user=None, partition='jag-standard',
-                  exclude='jagupard[4-8,10-11]', nodes=1, gres='gpu:1', cpus_per_task=1,
-                  mem='16G'):
-    '''
-    kwargs_list: list of dict
-        list of kwargs
-    '''
+def get_chain_python_cmd(kwargs_list, python_path, code_path, codalab=False):
     cmd = ''
     for kwargs in kwargs_list:
         python_cmd = get_python_cmd(kwargs, python_path=python_path, code_path=code_path)
@@ -77,6 +70,12 @@ def run_job_chain(kwargs_list, job_name, output, sbatch_script_path, python_path
             cmd += python_cmd + ' --no_wandb '
         else:
             cmd += python_cmd
+    return cmd
+
+
+def run_job(cmd, job_name, output, sbatch_script_path, codalab=False, mail_type='END,FAIL',
+            mail_user=None, partition='jag-standard', exclude='jagupard[4-8,10-11]',
+            nodes=1, gres='gpu:1', cpus_per_task=1, mem='16G'):
     if codalab:
         run_codalab(cmd, job_name=job_name, gpus=int(gres[gres.rfind(':')+1:]),
                     cpus=cpus_per_task, mem=mem, nlp=True)
@@ -86,7 +85,7 @@ def run_job_chain(kwargs_list, job_name, output, sbatch_script_path, python_path
                    nodes=nodes, gres=gres, cpus_per_task=cpus_per_task, mem=mem) 
 
 
-def run_input_exp():
+def run_input_exp(exp_name, model_dir, config_path, seed=0, lr=0.1, args=None):
     kwargs = {}
     kwargs = deepcopy(kwargs)
     print(exp_name)
@@ -98,6 +97,16 @@ def run_input_exp():
     kwargs['optimizer.args.lr'] = lr
     kwargs['scheduler.args.lr'] = kwargs['optimizer.args.lr']
     kwargs_list.append(kwargs.copy())
+    cmd = get_chain_python_cmd(
+            kwargs_list=kwargs_list, python_path=args.python_path, code_path=args.code_path,
+            codalab=args.codalab)
+    cmd += ' && mkdir -p ' + args.pseudolabels_dir
+    cmd += (' && ' + args.python_path + ' ' + args.scripts_dir + '/celeba/input_sklearn_p2.py' +
+            ' --model_dir=' + model_dir + ' --pseudolabels_dir=' + args.pseudolabels.dir + ' ')
+    run_job(cmd,
+            job_name=exp_name, output=args.output_dir + f'/{exp_name}',
+            mail_user=args.mail_user, codalab=args.codalab,
+            sbatch_script_path=args.sbatch_script_path)
 
 
 def run_input_experiments():
@@ -142,8 +151,10 @@ def run_pretrain_exp(exp_name, model_dir, config_path, freeze_shared=False, seed
     kwargs['dataset.args.pickle_file_path'] = args.celeba_pickle_dir + '/celeba_train_pickle'
     kwargs['dataset.args.celeba_root'] = args.celeba_pickle_dir
     kwargs_list.append(kwargs.copy())
-    run_job_chain(
+    cmd = get_chain_python_cmd(
             kwargs_list=kwargs_list, python_path=args.python_path, code_path=args.code_path,
+            codalab=args.codalab)
+    run_job(cmd,
             job_name=exp_name, output=args.output_dir + f'/{exp_name}',
             mail_user=args.mail_user, codalab=args.codalab,
             sbatch_script_path=args.sbatch_script_path)
@@ -173,8 +184,11 @@ def run_baseline_exp(exp_name, model_dir, config_path, seed, lr, args):
     kwargs['dataset.args.pickle_file_path'] = args.celeba_pickle_dir + '/celeba_train_pickle'
     kwargs['dataset.args.celeba_root'] = args.celeba_pickle_dir
     kwargs_list.append(kwargs.copy())
-    run_job_chain(
+    cmd = get_chain_python_cmd(
             kwargs_list=kwargs_list, python_path=args.python_path, code_path=args.code_path,
+            codalab=args.codalab)
+    run_job(
+            cmd,
             job_name=exp_name, output=args.output_dir + f'/{exp_name}',
             mail_user=args.mail_user, codalab=args.codalab,
             sbatch_script_path=args.sbatch_script_path)
@@ -230,6 +244,10 @@ if __name__ == "__main__":
                         help='Path to save logs and checkpoints.', default='logs/')
     parser.add_argument('--output_dir', type=str, required=False,
                         help='Path to dir to store stdout for experiment.', default='outputs/')
+    parser.add_argument('--scripts_dir', type=str, required=False,
+                        help='Path to dir where scripts are stored.', default='scripts/')
+    parser.add_argument('--pseudolabels_dir', type=str, required=False,
+                        help='Path to dir to store pseudolabels for aux-in.', default='pseudolabels/')
     parser.add_argument('--celeba_pickle_dir', type=str, required=False,
                         help='Location of celeb-a pickle file.', default='celeba_pickle')
     parser.add_argument('--mail_user', type=str, required=False,
