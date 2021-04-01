@@ -2,15 +2,18 @@ import argparse
 from pathlib import Path
 import subprocess
 import shlex
+from copy import deepcopy
 
 from innout import INNOUT_ROOT
 INNOUT_ROOT_PARENT = INNOUT_ROOT.parent
 
 BASELINE_CONFIG = 'configs/cropland/unet_prediction_indianakentuckyood.yaml'
 PRETRAIN_CONFIG = 'configs/cropland/unet_pretrain_indianakentuckyood.yaml'
+INNOUT_CONFIG = 'configs/cropland/unet_selftrain.yaml'
 
 EXPERIMENT_MODES = ['baseline', 'aux-inputs', 'aux-outputs', 'in-n-out']
 DEFAULT_SEED = 65269
+NUM_INNOUT_ITERATIONS = 2
 
 
 def get_python_cmd(args, main_args={}):
@@ -32,8 +35,9 @@ def get_python_cmd(args, main_args={}):
     '''
     # Arbitrary way of setting seed based on trial number, not super important
     seed = DEFAULT_SEED + (args.trial_num - 1) * 111
-
+    
     # Set some arguments for main.py that aren't in config
+    main_args = deepcopy(main_args)
     main_args['overwrite'] = args.overwrite
     main_args['no_wandb'] = args.no_wandb
     main_args['group_name'] = 'cropland'
@@ -166,6 +170,50 @@ def run_pretrain_exp(args):
     run_exp(args, python_cmd, exp_name)
 
 
+def run_innout_iterated(args, num_iterations):
+    innout_config_path = INNOUT_ROOT_PARENT / INNOUT_CONFIG
+    innout_args = {'config': innout_config_path,
+                   'restart_epoch_count': True,
+                   'loss.args.unlabeled_weight': 0.5}
+    pseudolabel_dir = INNOUT_ROOT_PARENT / 'innout-pseudolabels'
+    pseudolabel_script = 'get_pseudolabels.py'
+    python_path = 'python'
+    if not args.use_cl:
+        python_path = INNOUT_ROOT_PARENT / '.env' / 'bin' / python_path
+        pseudolabel_script = INNOUT_ROOT_PARENT / 'scripts' / 'cropland' / pseudolabel_script
+        pseudolabel_dir.mkdir(exist_ok=True, parents=True)
+    cl_extra_deps = ['get_pseudolabels.py']
+    model_dir = INNOUT_ROOT_PARENT / 'models' / 'cropland'
+    run_name_format = 'cropland_in-n-out_iter{}_trial{}'
+    python_cmd = ''
+    for iteration in range(num_iterations):
+        if iteration == 0:
+            pseudolabel_model_name = f'cropland_aux-inputs_trial{args.trial_num}'
+            pretrained_model_name = f'cropland_aux-outputs_trial{args.trial_num}_pretrain'
+            cl_extra_deps.append(pseudolabel_model_name)
+            cl_extra_deps.append('_'.join(pretrained_model_name.split('_')[:-1]))
+        else:
+            prev_run_name = run_name_format.format(iteration - 1, args.trial_num)
+            pseudolabel_model_name = pretrained_model_name = prev_run_name
+
+        pseudolabel_model_dir = model_dir / pseudolabel_model_name
+        pretrained_checkpoint = model_dir / pretrained_model_name / 'best-checkpoint.pt'
+        innout_args['checkpoint_path'] = pretrained_checkpoint
+        run_name = run_name_format.format(iteration, args.trial_num)
+        pseudolabel_path = pseudolabel_dir / f'{run_name}.pkl'
+        if iteration > 0:
+            python_cmd += ' && '
+        python_cmd += f'{python_path} {pseudolabel_script}'
+        python_cmd += f' --model_dir {pseudolabel_model_dir}'
+        python_cmd += f' --pseudolabel_path {pseudolabel_path} && '
+
+        innout_args['model_dir'] = model_dir / run_name
+        innout_args['dataset.args.unlabeled_targets_path'] = pseudolabel_path
+        python_cmd += get_python_cmd(args, innout_args)
+
+    run_exp(args, python_cmd, f'cropland_in-n-out_trial{args.trial_num}', cl_extra_deps)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Runs scripts for cropland')
     parser.add_argument('mode', type=str, choices=EXPERIMENT_MODES,
@@ -196,3 +244,5 @@ if __name__ == '__main__':
         run_base_exp(args, use_aux_inputs=True)
     elif args.mode == 'aux-outputs':
         run_pretrain_exp(args)
+    elif args.mode == 'in-n-out':
+        run_innout_iterated(args, num_iterations=NUM_INNOUT_ITERATIONS)
