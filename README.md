@@ -10,7 +10,7 @@ https://openreview.net/forum?id=jznizqvr15J
 Main scripts: See `scripts/*_runner.py`, `scripts/run_main.sh`, `extrapolation/main.py`.
 
 The main script is in `innout/main.py`. The script requires a YAML config
-file - an example is `innout/configs/pacs/resnet18.yaml`.
+file - an example is `configs/landcover/CNN1D.yaml`.
 To dynamically change values of the config file with command line arguments,
 simply add new arguments of the form `--key=val` where the key can be any
 string of multiple keys separated by periods. This is to allow for changing
@@ -33,6 +33,8 @@ source .env/bin/activate
 
 ## Datasets
 In-N-Out does better than all other methods on two real-world remote sensing datasets: Landcover and Cropland, and one standard ML benchmark dataset, CelebA. In this [CodaLab worksheet](https://worksheets.codalab.org/worksheets/0x2613c72d4f3f4fbb94e0a32c17ce5fb0), we show all our code and runs for these experiments for reproducibility.
+
+![Dataset Table](innout_datasets.png)
 
 Here is an example run of the baseline model for Landcover (see others on the CodaLab worksheet):
 ```
