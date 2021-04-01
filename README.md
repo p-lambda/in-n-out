@@ -38,5 +38,17 @@ In-N-Out does better than all other methods on two real-world remote sensing dat
 
 Here is an example run of the baseline model for Landcover (see others on the CodaLab worksheet):
 ```
-python innout/main.py --dataset.args.unlabeled_prop=0.9 --epochs=400 --scheduler.num_epochs=400 --seed=112 --dataset.args.seed=1 --group_name=landcover --dataset.args.include_ERA5=False --model.args.in_channels=8 --config=configs/landcover/CNN1D.yaml --model_dir=models/landcover_unlabeledprop_0.9/landcover_baseline_unlabeledprop0.9_trial1 --run_name=landcover_baseline_unlabeledprop0.9_trial1 --no_wandb --return_best
+python innout/main.py 
+    --dataset.args.unlabeled_prop=0.9
+    --epochs=400 --scheduler.num_epochs=400
+    --seed=112
+    --dataset.args.seed=1
+    --group_name=landcover
+    --dataset.args.include_ERA5=False
+    --model.args.in_channels=8
+    --config=configs/landcover/CNN1D.yaml
+    --model_dir=models/landcover_unlabeledprop_0.9/landcover_baseline_unlabeledprop0.9_trial1
+    --run_name=landcover_baseline_unlabeledprop0.9_trial1
+    --no_wandb
+    --return_best
 ```
