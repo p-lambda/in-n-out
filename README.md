@@ -40,7 +40,8 @@ Here is an example run of the baseline model for Landcover (see others on the Co
 ```
 python innout/main.py 
     --dataset.args.unlabeled_prop=0.9
-    --epochs=400 --scheduler.num_epochs=400
+    --epochs=400
+    --scheduler.num_epochs=400
     --seed=112
     --dataset.args.seed=1
     --group_name=landcover
