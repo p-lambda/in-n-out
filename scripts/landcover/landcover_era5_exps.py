@@ -1,3 +1,6 @@
+'''
+Experiments for Landcover, with ERA5 climate data as auxiliary information
+'''
 import subprocess
 import shlex
 import argparse
@@ -11,6 +14,8 @@ import shutil
 
 from innout import INNOUT_ROOT
 INNOUT_ROOT_PARENT = INNOUT_ROOT.parent
+
+WKSHT_NAME = 'in-n-out-iclr'
 
 
 def get_time_str():
@@ -55,7 +60,7 @@ def run_sbatch(python_cmd, job_name='landcover', nodes=1,
         else:
             cl_extra_deps_str = ''
             cl_extra_deps_cps = ''
-        cmd = f'cl run -n {job_name} -w in-n-out-iclr-landcover --request-docker-image ananya/in-n-out \
+        cmd = f'cl run -n {job_name} -w {WKSHT_NAME} --request-docker-image ananya/in-n-out \
                 --request-gpus 1 --request-memory 16g --request-queue tag=nlp \
                 :innout :configs :landcover_data.pkl {cl_extra_deps_str} '
         cmd += f'"export PYTHONPATH=.; mkdir models; mkdir innout-pseudolabels; {cl_extra_deps_cps} {python_cmd}"'
@@ -241,12 +246,9 @@ def run_innout_iterated(iterations=2):
               'dataset.args.unlabeled_prop': args.unlabeled_prop,
               'restart_epoch_count': True,
               'epochs': 400}
-    # add some regularization for self training
 
     kwargs['optimizer.args.lr'] = 0.1
     kwargs['scheduler.args.lr'] = 0.1
-    # kwargs['optimizer.args.lr'] = 0.05
-    # kwargs['scheduler.args.lr'] = 0.05
 
     base_exp_id = f'landcover_{exp_type}_unlabeledprop{args.unlabeled_prop}_trial{args.trial}'
 
