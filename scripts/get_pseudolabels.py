@@ -51,6 +51,7 @@ if __name__ == "__main__":
     pseudolabel_dataset_config['dataset']['args']['use_unlabeled_id'] = args.use_unlabeled_id
     pseudolabel_dataset_config['dataset']['args']['use_unlabeled_ood'] = args.use_unlabeled_ood
 
+    print(f"Setting pseudolabel dataset seed to {config_g['dataset']['args']['seed']}")
     pseudolabel_dataset_config['dataset']['args']['seed'] = config_g['dataset']['args']['seed']
     pseudolabels_id = get_pseudolabels(args.model_dir, pseudolabel_dataset_config)
     # save the pseudolabels

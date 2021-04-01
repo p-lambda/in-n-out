@@ -1,4 +1,11 @@
-# In-N-Out (repo in progress)
+# 🍔 In-N-Out: Pre-Training and Self-Training using Auxiliary Information for Out-of-Distribution Robustness (ICLR 2021)
+
+This repo contains the experiments for the ICLR 2021 paper:
+```
+Sang Michael Xie*, Ananya Kumar*, Robbie Jones*, Fereshte Khani, Tengyu Ma, Percy Liang.             
+In-N-Out: Pre-Training and Self-Training using Auxiliary Information for Out-of-Distribution Robustness, ICLR 2021.                  
+https://openreview.net/forum?id=jznizqvr15J
+```
 
 Main scripts: See `scripts/*_runner.py`, `scripts/run_main.sh`, `extrapolation/main.py`.
 
@@ -16,23 +23,18 @@ It is important that the key and value are separated by an equals sign.
 The first time you run this project, in the current directory, which contains README, create a virtualenv:
 ```
 python3 -m venv .env
-. .env/bin/activate
+source .env/bin/activate
 pip install -e .
 ```
-
-We used PyTorch 1.6.0 with Cuda 10.1 for our experiments. You can install this version via `pip` with the following command:
-
+In subsequent runs you only need to activate the environment:
 ```
-pip install torch==1.6.0+cu101 torchvision==0.7.0+cu101 -f https://download.pytorch.org/whl/torch_stable.html
+source .env/bin/activate
 ```
 
-In subsequent runs you typically only need to activate the environment (although you may need to sometimes upgrade packages, you can run the install command above after activate):
-```
-. .env/bin/activate
-```
+## Datasets
+In-N-Out does better than all other methods on two real-world remote sensing datasets: Landcover and Cropland, and one standard ML benchmark dataset, CelebA. In this [CodaLab worksheet](https://worksheets.codalab.org/worksheets/0x2613c72d4f3f4fbb94e0a32c17ce5fb0), we show all our code and runs for these experiments for reproducibility.
 
-Finally, you can run one of the existing configs. Each config defines an experiment, and you can overwrite parameters.
-Here's an example run which overwrites the optimizer learning rate to 0.001:
+Here is an example run of the baseline model for Landcover (see others on the CodaLab worksheet):
 ```
-../.env/bin/python main.py --config=configs/synthetic/erm.yaml --model_dir=models/example_model --project_name=innout --run_name=example_run --group_name=example_group --optimizer.args.lr=0.001
+python innout/main.py --dataset.args.unlabeled_prop=0.9 --epochs=400 --scheduler.num_epochs=400 --seed=112 --dataset.args.seed=1 --group_name=landcover --dataset.args.include_ERA5=False --model.args.in_channels=8 --config=configs/landcover/CNN1D.yaml --model_dir=models/landcover_unlabeledprop_0.9/landcover_baseline_unlabeledprop0.9_trial1 --run_name=landcover_baseline_unlabeledprop0.9_trial1 --no_wandb --return_best
 ```
