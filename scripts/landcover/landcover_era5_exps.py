@@ -241,6 +241,7 @@ def run_innout_iterated(iterations=2):
               'dataset.args.unlabeled_prop': args.unlabeled_prop,
               'restart_epoch_count': True,
               'epochs': 400}
+    # add some regularization for self training
 
     kwargs['optimizer.args.lr'] = 0.1
     kwargs['scheduler.args.lr'] = 0.1
@@ -253,13 +254,13 @@ def run_innout_iterated(iterations=2):
 
     trial_cmd = ""
     for st_iteration in range(iterations):
+        curr_kwargs = kwargs.copy()
         if st_iteration == 0:
             aux_inputs_name = f'landcover_aux-inputs_unlabeledprop{args.unlabeled_prop}_trial{args.trial}'
             aux_outputs_name = f'landcover_aux-outputs_unlabeledprop{args.unlabeled_prop}_trial{args.trial}_pretrain'
             model_dir_g = model_dir_root / aux_inputs_name
             checkpoint_path_f = model_dir_root / aux_outputs_name / 'best-checkpoint.pt'
 
-            curr_kwargs = kwargs.copy()
             curr_kwargs['dataset.args.use_unlabeled_id'] = True
             curr_kwargs['dataset.args.use_unlabeled_ood'] = False
             cl_extra_deps.append(aux_inputs_name)
@@ -270,7 +271,6 @@ def run_innout_iterated(iterations=2):
             model_dir_g = model_dir_root / prev_exp_id
             checkpoint_path_f = model_dir_g / 'best-checkpoint.pt'
             # add some regularization for iterated self training
-            curr_kwargs = kwargs.copy()
             curr_kwargs['dataset.args.use_unlabeled_id'] = True
             curr_kwargs['dataset.args.use_unlabeled_ood'] = True
             curr_kwargs['optimizer.args.weight_decay'] = 0.0
