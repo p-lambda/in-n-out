@@ -32,7 +32,7 @@ source .env/bin/activate
 ```
 
 ## Datasets
-In-N-Out does better than all other methods on two real-world remote sensing datasets: Landcover and Cropland, and one standard ML benchmark dataset, CelebA. In this [CodaLab worksheet](https://worksheets.codalab.org/worksheets/0x2613c72d4f3f4fbb94e0a32c17ce5fb0), we show all our code and runs for these experiments for reproducibility.
+In-N-Out does better than all other methods on two real-world remote sensing datasets: Landcover and Cropland, and one standard ML benchmark dataset, CelebA. In this [CodaLab worksheet](https://worksheets.codalab.org/worksheets/0x2613c72d4f3f4fbb94e0a32c17ce5fb0), we show all our code and runs for these experiments for reproducibility. The data can also be downloaded from the CodaLab worksheet.
 
 ![Dataset Table](innout_datasets.png)
 
