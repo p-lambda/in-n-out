@@ -1,4 +1,4 @@
-from innout.datasets import utils
+from innout.datasets import utils, RangeDataset
 from innout.data_utils import get_split_idxs
 from pathlib import Path
 import pickle
@@ -517,17 +517,16 @@ class Cropland(Dataset):
         self.labeled_indices = labeled_indices
         self.unlabeled_indices = unlabeled_indices
         self._unseen_unlabeled_targets = targets[self.unlabeled_indices]
-
-        # assumes that unlabeled_targets_path uses the same split
         self.unlabeled_targets_path = unlabeled_targets_path
         if unlabeled_targets_path is not None and not self.eval_mode:
-            with open(unlabeled_targets_path, 'rb') as pkl_file:
-                pseudolabels_dict = pickle.load(pkl_file)
-            pseudolabels = pseudolabels_dict['pseudolabels']
-            assert len(pseudolabels) == len(self.unlabeled_indices)
-            acc = np.mean(pseudolabels == targets[self.unlabeled_indices])
-            assert acc == pseudolabels_dict['pseudolabel_acc']
+            pseudolabels = np.load(unlabeled_targets_path)
+            assert len(pseudolabels) == len(self.unlabeled_data)
             self.data_map['targets'][self.unlabeled_indices] = pseudolabels
+
+    def get_unlabeled_dataset(self):
+        unlabeled_start_idx = len(self.labeled_indices)
+        unlabeled_end_idx = len(self)
+        return RangeDataset(self, unlabeled_start_idx, unlabeled_end_idx)
 
     def __getitem__(self, index):
         '''

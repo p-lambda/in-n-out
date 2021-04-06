@@ -15,6 +15,7 @@ EXPERIMENT_MODES = ['baseline', 'aux-inputs', 'aux-outputs', 'in-n-out']
 DEFAULT_SEED = 65269
 NUM_INNOUT_ITERATIONS = 2
 
+CODALAB_WORKSHEET = 'in-n-out-iclr-cropland'
 
 def get_python_cmd(args, main_args={}):
     '''
@@ -89,7 +90,7 @@ def run_exp(args, python_cmd, exp_name, cl_extra_deps=None):
             cl_extra_deps_str = ''
             cl_extra_deps_cps = ''
 
-        cmd = f'cl run -n {exp_name} -w in-n-out-iclr-cropland '
+        cmd = f'cl run -n {exp_name} -w {args.codalab_worksheet} '
         cmd += '--request-docker-image ananya/in-n-out --request-gpus 1 '
         cmd += '--request-memory 52g --request-queue tag=nlp :innout :configs '
         cmd += f':cropland_data.pkl {cl_extra_deps_str} '
@@ -180,31 +181,38 @@ def run_innout_iterated(args, num_iterations):
     python_path = 'python'
     if not args.use_cl:
         python_path = INNOUT_ROOT_PARENT / '.env' / 'bin' / python_path
-        pseudolabel_script = INNOUT_ROOT_PARENT / 'scripts' / 'cropland' / pseudolabel_script
+        pseudolabel_script = INNOUT_ROOT_PARENT / 'scripts' / pseudolabel_script
         pseudolabel_dir.mkdir(exist_ok=True, parents=True)
     cl_extra_deps = ['get_pseudolabels.py']
     model_dir = INNOUT_ROOT_PARENT / 'models' / 'cropland'
     run_name_format = 'cropland_in-n-out_iter{}_trial{}'
     python_cmd = ''
     for iteration in range(num_iterations):
+        innout_args['dataset.args.use_unlabeled_id'] = True
         if iteration == 0:
             pseudolabel_model_name = f'cropland_aux-inputs_trial{args.trial_num}'
             pretrained_model_name = f'cropland_aux-outputs_trial{args.trial_num}_pretrain'
+            innout_args['dataset.args.use_unlabeled_ood'] = False
             cl_extra_deps.append(pseudolabel_model_name)
             cl_extra_deps.append('_'.join(pretrained_model_name.split('_')[:-1]))
         else:
             prev_run_name = run_name_format.format(iteration - 1, args.trial_num)
             pseudolabel_model_name = pretrained_model_name = prev_run_name
+            innout_args['model.args.dropout_prop'] = 0.8
+            innout_args['dataset.args.use_unlabeled_ood'] = True
 
         pseudolabel_model_dir = model_dir / pseudolabel_model_name
         pretrained_checkpoint = model_dir / pretrained_model_name / 'best-checkpoint.pt'
         innout_args['checkpoint_path'] = pretrained_checkpoint
         run_name = run_name_format.format(iteration, args.trial_num)
-        pseudolabel_path = pseudolabel_dir / f'{run_name}.pkl'
+        pseudolabel_path = pseudolabel_dir / f'{run_name}.npy'
         if iteration > 0:
             python_cmd += ' && '
         python_cmd += f'{python_path} {pseudolabel_script}'
         python_cmd += f' --model_dir {pseudolabel_model_dir}'
+        python_cmd += '  --use_unlabeled_id'
+        if innout_args['dataset.args.use_unlabeled_ood']:
+            python_cmd += ' --use_unlabeled_ood'
         python_cmd += f' --pseudolabel_path {pseudolabel_path} && '
 
         innout_args['model_dir'] = model_dir / run_name
@@ -231,6 +239,8 @@ if __name__ == '__main__':
                         help='Don\'t use W&B')
     parser.add_argument('--dryrun', action='store_true',
                         help='Print command and exit')
+    parser.add_argument('--codalab_worksheet', type=str, default=CODALAB_WORKSHEET,
+                        help='Codalab worksheet')
 
     args = parser.parse_args()
 

@@ -6,6 +6,7 @@ from scipy.stats import rankdata
 from scipy import signal
 from torch.utils.data import Dataset
 import re
+from innout.datasets import RangeDataset
 from innout.data_utils import get_split_idxs
 
 DATA_ROOT = 'timeseries_by_box_v2'
@@ -469,6 +470,11 @@ class Landcover(Dataset):
             #         self.era5_mean = concatted_era5.mean(axis=(0, 2))[:, np.newaxis]
             #         self.era5_std = concatted_era5.std(axis=(0, 2))[:, np.newaxis]
 
+    def get_unlabeled_dataset(self):
+        unlabeled_start_idx = len(self.data)
+        unlabeled_end_idx = len(self)
+        return RangeDataset(self, unlabeled_start_idx, unlabeled_end_idx)
+            
     def __getitem__(self, index):
         """
         Args:
