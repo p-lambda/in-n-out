@@ -208,7 +208,7 @@ def run_innout_iterated(args, num_iterations):
         pseudolabel_path = pseudolabel_dir / f'{run_name}.npy'
         if iteration > 0:
             python_cmd += ' && '
-        python_cmd += f'{python_path} {pseudolabel_script}'
+        python_cmd += f'{python_path} {pseudolabel_script} --is_binary'
         python_cmd += f' --model_dir {pseudolabel_model_dir}'
         python_cmd += '  --use_unlabeled_id'
         if innout_args['dataset.args.use_unlabeled_ood']:
