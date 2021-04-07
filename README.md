@@ -10,8 +10,6 @@ This repo contains the experiments for the ICLR 2021 [paper](https://openreview.
 }
 ```
 
-Main scripts: See `scripts/*_runner.py`, `scripts/run_main.sh`, `extrapolation/main.py`.
-
 The main script is in `innout/main.py`. The script requires a YAML config
 file - an example is `configs/landcover/CNN1D.yaml`.
 To dynamically change values of the config file with command line arguments,
@@ -20,6 +18,8 @@ string of multiple keys separated by periods. This is to allow for changing
 nested components of the config file. For example `--model.args.depth=3` changes
 the config dictionary in this way: `config['model']['args']['depth'] = 3`.
 It is important that the key and value are separated by an equals sign.
+
+Examples of how to run the main script on our datasets are in `scripts/`.
 
 ## Steps to run an experiment
 
