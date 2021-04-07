@@ -520,7 +520,7 @@ class Cropland(Dataset):
         self.unlabeled_targets_path = unlabeled_targets_path
         if unlabeled_targets_path is not None and not self.eval_mode:
             pseudolabels = np.load(unlabeled_targets_path)
-            assert len(pseudolabels) == len(self.unlabeled_data)
+            assert len(pseudolabels) == len(self.unlabeled_indices)
             self.data_map['targets'][self.unlabeled_indices] = pseudolabels
 
     def get_unlabeled_dataset(self):
