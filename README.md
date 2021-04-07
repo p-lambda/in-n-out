@@ -1,10 +1,13 @@
 # 🍔 In-N-Out: Pre-Training and Self-Training using Auxiliary Information for Out-of-Distribution Robustness (ICLR 2021)
 
-This repo contains the experiments for the ICLR 2021 paper:
+This repo contains the experiments for the ICLR 2021 [paper](https://openreview.net/forum?id=jznizqvr15J):
 ```
-Sang Michael Xie*, Ananya Kumar*, Robbie Jones*, Fereshte Khani, Tengyu Ma, Percy Liang.             
-In-N-Out: Pre-Training and Self-Training using Auxiliary Information for Out-of-Distribution Robustness, ICLR 2021.                  
-https://openreview.net/forum?id=jznizqvr15J
+@article{xie2021innout,
+  author = {Sang Michael Xie and Ananya Kumar and Robbie Jones and Fereshte Khani and Tengyu Ma and Percy Liang},
+  journal = {International Conference on Learning Representations (ICLR)},
+  title = {In-N-Out: Pre-Training and Self-Training using Auxiliary Information for Out-of-Distribution Robustness},
+  year = {2021},
+}
 ```
 
 Main scripts: See `scripts/*_runner.py`, `scripts/run_main.sh`, `extrapolation/main.py`.
@@ -20,7 +23,7 @@ It is important that the key and value are separated by an equals sign.
 
 ## Steps to run an experiment
 
-The first time you run this project, in the current directory, which contains README, create a virtualenv:
+The first time you run this project, create a virualenv in the current directory (which contains the README):
 ```
 python3 -m venv .env
 source .env/bin/activate
