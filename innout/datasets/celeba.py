@@ -8,6 +8,7 @@ from PIL import Image
 import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
+from innout.datasets import RangeDataset
 
 
 JUICE_CELEBA_ROOT = '/juice/scr/ananya/celeba'
@@ -99,7 +100,7 @@ class CelebA(Dataset):
                  pos_fraction, in_domain_selector, out_domain_selector,
                  in_labeled_splits=None, in_labeled_split_idx=None, transform=None,
                  meta_as_input=False, only_meta=False, meta_as_target=False,
-                 celeba_root=JUICE_CELEBA_ROOT, pickle_file_path=None, pseudolabel_path=None):
+                 celeba_root=JUICE_CELEBA_ROOT, pickle_file_path=None, unlabeled_target_path=None):
         """
         Args:
             seed: integer seed for shuffling dataset.
@@ -121,6 +122,8 @@ class CelebA(Dataset):
                 'val': alias for in_val.
                 'test': alias for in_test.
                 'test2': alias for out_test.
+            use_unlabeled_id: Use unlabeled data from ID.
+            use_unlabeled_ood: Use unlabeled data from OOD, appended after ID if ID specified.
             num_in_labeled: positive integer number of labeled in-domain training examples.
             num_in_unlabeled: positive integer number of *unlabeled* in-domain examples.
             num_in_val: positive integer number of labeled in-domain validation examples.
@@ -153,6 +156,7 @@ class CelebA(Dataset):
             pickle_file_path: if not None, then read a pickle file containing all the celeba
                 images. This can be useful so we don't repeatedly hit the distributed file system
                 for every call to read an image.
+            unlabeled_target_path: Path to load unlabeled targets from.
         """
         self._rng = np.random.RandomState(seed)
         if not in_domain_selector in domain_selectors:
@@ -233,8 +237,15 @@ class CelebA(Dataset):
             out_indices_no_test, num_out_labeled, num_out_unlabeled)
 
         # Choose the current set of indices based on the split mode.
-        self._unlabeled = False
+        self._only_unlabeled = False
         self.pseudolabels = None
+        def load_and_check_unlabeled_target_path():
+            self.pseudolabels = np.load(unlabeled_target_path)
+            if not(len(self.pseudolabels) + self._labeled_len == len(self._indices)):
+                raise ValueError(
+                    f'Require pseudolabel len ({len(self.pseudolabels)}) + '
+                    f'labeled len ({self._labeled_len}) == '
+                    f'total no. of indices ({len(self._indices)})')
         if self._split == 'in_labeled' or self._split == 'train':
             self._indices = in_labeled_indices
             # Construct additional splits if needed.
@@ -248,13 +259,9 @@ class CelebA(Dataset):
                 start_idx = cum_splits[in_labeled_split_idx]
                 end_idx = cum_splits[in_labeled_split_idx+1]
                 self._indices = in_labeled_indices[start_idx:end_idx]
-            if pseudolabel_path is not None:
-                self.labeled_len = len(in_labeled_indices)
-                self._indices = np.concatenate([self._indices, in_unlabeled_indices])
-                self.pseudolabels = np.load(pseudolabel_path)
         elif self._split == 'in_unlabeled':
             self._indices = in_unlabeled_indices
-            self._unlabeled = True
+            self._only_unlabeled = True
         elif self._split == 'in_val' or self._split == 'val':
             self._indices = in_val_indices
         elif self._split == 'in_test' or self._split == 'test':
@@ -263,14 +270,31 @@ class CelebA(Dataset):
             self._indices = out_labeled_indices
         elif self._split == 'out_unlabeled':
             self._indices = out_unlabeled_indices
-            self._unlabeled = True
+            self._only_unlabeled = True
         elif self._split == 'all_unlabeled':
             self._indices = np.concatenate([in_unlabeled_indices, out_unlabeled_indices])
-            self._unlabeled = True
+            self._only_unlabeled = True
         elif self._split == 'out_test' or self._split == 'test2':
             self._indices = out_test_indices
         else:
             raise ValueError('split {} not supported'.format(self._split))
+
+        if use_unlabeled_id and use_unlabeled_ood:
+            self.labeled_len = len(in_labeled_indices)
+            self._indices = np.concatenate(
+                [self._indices, in_unlabeled_indices, out_unlabeled_indices])
+            if unlabeled_target_path is not None:
+                load_and_check_unlabeled_target_path()
+        elif use_unlabeled_id:
+            self.labeled_len = len(in_labeled_indices)
+            self._indices = np.concatenate([self._indices, in_unlabeled_indices])
+            if unlabeled_target_path is not None:
+                load_and_check_unlabeled_target_path()
+        elif use_unlabeled_ood:
+            self.labeled_len = len(in_labeled_indices)
+            self._indices = np.concatenate([self._indices, out_unlabeled_indices])
+            if unlabeled_target_path is not None:
+                load_and_check_unlabeled_target_path()
 
     def __getitem__(self, i):
         index = self._indices[i]
@@ -290,7 +314,7 @@ class CelebA(Dataset):
         else:
             output_dict['data'] = x
         is_labeled_example = True
-        if not self._unlabeled:
+        if not self._only_unlabeled:
             if self.pseudolabels is not None:
                 # semi-sup dataset
                 if i < self.labeled_len:
@@ -302,11 +326,20 @@ class CelebA(Dataset):
                     output_dict['target'] = torch.Tensor([self.pseudolabels[i - self.labeled_len].squeeze()]).float()
             else:
                 output_dict['target'] = self._attr[index][self._target_attribute].unsqueeze(-1).float()
-
+        else:
+            is_labeled_example = False
+            output_dict['target'] = -1.0
         output_dict['domain_label'] = {'meta': self._attr[index][self._meta_attributes], 'labeled': is_labeled_example}
         if self._meta_as_target:
             output_dict['target'] = output_dict['domain_label']['meta'].float()
         return output_dict
 
+    def get_unlabeled_dataset(self):
+        if self._only_unlabeled:
+            return self
+        else:
+            return RangeDataset(self, self._labeled_len, len(self))
+
     def __len__(self) -> int:
         return len(self._indices)
+
