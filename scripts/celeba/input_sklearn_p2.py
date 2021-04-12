@@ -149,7 +149,7 @@ def get_input_results(model_dir, pseudolabels_dir=None, attrs=None):
         'test_acc': scores[2],
         'test2_acc': scores[3],
     }
-    results_file = model_dir + '/aux_in_results.json'
+    results_file = model_dir / 'aux_in_results.json'
     with open(results_file, "w") as outfile: 
             json.dump(scores_dict, outfile)
     return scores

@@ -13,14 +13,14 @@ optimizer:
     momentum: 0.9
 
 scheduler:
-  classname: extrapolation.schedulers.CosineLR
+  classname: innout.schedulers.CosineLR
   args:
     optimizer: null
     lr: *lr
     num_epochs: *epochs
 
 model:
-  classname: extrapolation.models.resnet.ResNetWithAttributes18
+  classname: innout.models.resnet.ResNetWithAttributes18
   args:
     num_classes: 1
     in_channels: 3
@@ -29,13 +29,13 @@ model:
     use_attributes: False  # Don't use attributes in first phase.
 
 train_transforms:
-  - classname: extrapolation.datasets.celeba.tensor_transform
+  - classname: innout.datasets.celeba.tensor_transform
 
 test_transforms:
-  - classname: extrapolation.datasets.celeba.tensor_transform
+  - classname: innout.datasets.celeba.tensor_transform
 
 dataset:
-  classname: extrapolation.datasets.celeba.CelebA
+  classname: innout.datasets.celeba.CelebA
   args:
     seed: 0
     target_attribute: 'Male'

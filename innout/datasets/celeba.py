@@ -94,10 +94,11 @@ def celeba_train_to_pickle(save_file, celeba_root=JUICE_CELEBA_ROOT):
 
 class CelebA(Dataset):
 
-    def __init__(self, seed, target_attribute, meta_attributes, split,
+    def __init__(self, seed, target_attribute, meta_attributes, split, 
                  num_in_labeled, num_in_unlabeled, num_in_val, num_in_test,
                  num_out_labeled, num_out_unlabeled, num_out_test,
                  pos_fraction, in_domain_selector, out_domain_selector,
+                 use_unlabeled_id=False, use_unlabeled_ood=False,
                  in_labeled_splits=None, in_labeled_split_idx=None, transform=None,
                  meta_as_input=False, only_meta=False, meta_as_target=False,
                  celeba_root=JUICE_CELEBA_ROOT, pickle_file_path=None, unlabeled_target_path=None):
@@ -280,18 +281,18 @@ class CelebA(Dataset):
             raise ValueError('split {} not supported'.format(self._split))
 
         if use_unlabeled_id and use_unlabeled_ood:
-            self.labeled_len = len(in_labeled_indices)
+            self._labeled_len = len(in_labeled_indices)
             self._indices = np.concatenate(
                 [self._indices, in_unlabeled_indices, out_unlabeled_indices])
             if unlabeled_target_path is not None:
                 load_and_check_unlabeled_target_path()
         elif use_unlabeled_id:
-            self.labeled_len = len(in_labeled_indices)
+            self._labeled_len = len(in_labeled_indices)
             self._indices = np.concatenate([self._indices, in_unlabeled_indices])
             if unlabeled_target_path is not None:
                 load_and_check_unlabeled_target_path()
         elif use_unlabeled_ood:
-            self.labeled_len = len(in_labeled_indices)
+            self._labeled_len = len(in_labeled_indices)
             self._indices = np.concatenate([self._indices, out_unlabeled_indices])
             if unlabeled_target_path is not None:
                 load_and_check_unlabeled_target_path()

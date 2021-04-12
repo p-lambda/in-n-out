@@ -28,7 +28,7 @@ def get_res(model_dir, val_metric='val_accuracy', take_max=True, metrics=None,
     with open(model_dir / 'config.json', 'r') as f:
         config = json.load(f)
 
-    config_list =[('run_name', Path(config['model_dir']).name)]
+    config_list =[('run_name', str(config['model_dir']))]
 
     res_path = model_dir / 'stats_eval.tsv'
     try:
