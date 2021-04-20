@@ -1,6 +1,6 @@
 # 🍔 In-N-Out: Pre-Training and Self-Training using Auxiliary Information for Out-of-Distribution Robustness (ICLR 2021)
 
-This repo contains the experiments for the ICLR 2021 [paper](https://openreview.net/forum?id=jznizqvr15J):
+This repo contains the experiments for the ICLR 2021 [paper](https://arxiv.org/abs/2012.04550):
 ```
 @article{xie2021innout,
   author = {Sang Michael Xie and Ananya Kumar and Robbie Jones and Fereshte Khani and Tengyu Ma and Percy Liang},
