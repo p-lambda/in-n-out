@@ -2,9 +2,9 @@
 
 This repo contains the experiments for the ICLR 2021 [paper](https://arxiv.org/abs/2012.04550):
 ```
-@article{xie2021innout,
+@inproceedings{xie2021innout,
   author = {Sang Michael Xie and Ananya Kumar and Robbie Jones and Fereshte Khani and Tengyu Ma and Percy Liang},
-  journal = {International Conference on Learning Representations (ICLR)},
+  booktitle = {International Conference on Learning Representations (ICLR)},
   title = {In-N-Out: Pre-Training and Self-Training using Auxiliary Information for Out-of-Distribution Robustness},
   year = {2021},
 }
